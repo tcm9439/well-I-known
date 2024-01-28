@@ -83,10 +83,13 @@ cli-name set cli-name config-key
 cli-name subscribe
 ```
 
-## rust
+## rust library
 - web
   - https://github.com/tokio-rs/axum
   - auth: https://github.com/Owez/axum-auth
+  - jwt: 
+    - https://github.com/wpcodevo/rust-axum-jwt-auth
+    - https://crates.io/crates/jwt
   - HTTPS: https://github.com/tokio-rs/axum/tree/main/examples/low-level-rustls
 - web client
   - reqwest: https://github.com/seanmonstar/reqwest
