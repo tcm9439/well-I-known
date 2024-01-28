@@ -1,11 +1,21 @@
 # Design
 ## Modules
 - core
-  - common obj - like the API para object
+  - cryptography
+    - key pair
+      - generation
+      - key to/from pem file
+      - key to/from string (to be stored in db)
+      - encrypt
+      - decrypt
 - server 
-  - db stuff
+  - db entity & sql
+  - api
 - client 
-- cli - make use of client
+- cli 
+  - make use of client 
+  - as the id as superuser
+    - auth by the superuser's private key?
 
 ## Database
 - Sqlite
@@ -76,11 +86,18 @@ cli-name subscribe
 ## rust
 - web
   - https://github.com/tokio-rs/axum
+  - auth: https://github.com/Owez/axum-auth
   - HTTPS: https://github.com/tokio-rs/axum/tree/main/examples/low-level-rustls
+- web client
+  - reqwest: https://github.com/seanmonstar/reqwest
 - redis 
   - https://github.com/redis-rs/redis-rs?tab=readme-ov-file
 - sqlite
-  - https://github.com/diesel-rs/diesel
+  - SQL builder: https://github.com/SeaQL/sea-query
+  - Executer / driver: https://github.com/launchbadge/sqlx
+- Error
+  - https://github.com/dtolnay/anyhow
+  - https://github.com/dtolnay/thiserror
 - clap - Command Line Argument Parser for Rust
   - https://docs.rs/clap/latest/clap/
   - example: https://github.com/tokio-rs/mini-redis/blob/master/src/bin/server.rs
