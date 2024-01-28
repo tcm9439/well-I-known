@@ -8,13 +8,13 @@ const RSA_KEY_SIZE: usize = 2048;
 
 // ref: https://docs.rs/rsa/latest/rsa/
 
-struct RsaKeyPair {
-    public_key: RsaPublicKey,
-    private_key: RsaPrivateKey,
+pub struct RsaKeyPair {
+    pub public_key: RsaPublicKey,
+    pub private_key: RsaPrivateKey,
 }
 
 impl RsaKeyPair {
-    fn new() -> Result<Self> {
+    pub fn new() -> Result<Self> {
         let mut rng = rand::thread_rng();
         let private_key = RsaPrivateKey::new(&mut rng, RSA_KEY_SIZE)?;
         let public_key = RsaPublicKey::from(&private_key);
@@ -25,7 +25,7 @@ impl RsaKeyPair {
         })
     }
 
-    fn new_from_private_key_str(private_key: &str) -> Result<Self> {
+    pub fn new_from_private_key_str(private_key: &str) -> Result<Self> {
         let private_key = RsaPrivateKey::from_pkcs1_pem(private_key)?;
         let public_key = RsaPublicKey::from(&private_key);
         Ok(Self {
@@ -34,7 +34,7 @@ impl RsaKeyPair {
         })
     }
 
-    fn new_from_private_key_file(key_file: &Path) -> Result<Self> {
+    pub fn new_from_private_key_file(key_file: &Path) -> Result<Self> {
         let private_key = RsaPrivateKey::read_pkcs1_pem_file(key_file)?;
         let public_key = RsaPublicKey::from(&private_key);
         Ok(Self {
@@ -44,11 +44,12 @@ impl RsaKeyPair {
     }
 }
 
-trait Encryption {
+pub trait Encryption {
+    // trait items always share the visibility of their trait
     fn encrypt_string(&self, data: &str) -> Result<String>;
 }
 
-trait Decryption {
+pub trait Decryption {
     fn decrypt_string(&self, data: &str) -> Result<String>;
 }
 
@@ -71,7 +72,7 @@ impl Decryption for RsaPrivateKey {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use mt_test_util;
     use super::*;
     use indoc::indoc;
 
@@ -109,15 +110,6 @@ mod tests {
         RsaKeyPair::new_from_private_key_str(pem).unwrap()
     }
 
-    // Path and PathBuf <=> &str and String <=> &[] and Vec
-    // If you create a new path, or combine paths or anything like that, you need to return a PathBuf.
-    fn get_resource(resource_name: &str) -> PathBuf {
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push("resources/test");
-        path.push(resource_name);
-        path
-    }
-
     #[test]
     fn encrypt_then_decrypt() {
         let key_pair = get_example_key_pair();
@@ -129,8 +121,9 @@ mod tests {
 
     #[test]
     fn new_key_pair_from_file() {
-        let loaded_key_pair = RsaKeyPair::new_from_private_key_file(
-            &get_resource("test-private-key.pem")).unwrap();
+        let key_file = mt_test_util::get_resource_file("test-private-key.pem");
+        println!("{}", key_file.display());
+        let loaded_key_pair = RsaKeyPair::new_from_private_key_file(&key_file).unwrap();
         let expected_key_pair = get_example_key_pair();
         assert_eq!(expected_key_pair.private_key, loaded_key_pair.private_key);
     }

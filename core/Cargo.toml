@@ -9,6 +9,7 @@ rsa = "0.9.6"
 rand = "0.8.5"
 base64 = "0.21.5"
 anyhow = "1.0"
+mt-test-util = { path = "/Users/maisytse/Documents/Workspace/rust-util/mt-test-util" }
 
 # faster RSA key gen
 [profile.dev.package.num-bigint-dig]
