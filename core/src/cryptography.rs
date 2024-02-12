@@ -8,12 +8,14 @@ const RSA_KEY_SIZE: usize = 2048;
 
 // ref: https://docs.rs/rsa/latest/rsa/
 
+/// A key pair for RSA encryption
 pub struct RsaKeyPair {
     pub public_key: RsaPublicKey,
     pub private_key: RsaPrivateKey,
 }
 
 impl RsaKeyPair {
+    /// Generate a new key pair
     pub fn new() -> Result<Self> {
         let mut rng = rand::thread_rng();
         let private_key = RsaPrivateKey::new(&mut rng, RSA_KEY_SIZE)?;
@@ -25,7 +27,8 @@ impl RsaKeyPair {
         })
     }
 
-    pub fn new_from_private_key_str(private_key: &str) -> Result<Self> {
+    /// Load a key pair from a private key string
+    pub fn from_private_key_str(private_key: &str) -> Result<Self> {
         let private_key = RsaPrivateKey::from_pkcs1_pem(private_key)?;
         let public_key = RsaPublicKey::from(&private_key);
         Ok(Self {
@@ -34,7 +37,8 @@ impl RsaKeyPair {
         })
     }
 
-    pub fn new_from_private_key_file(key_file: &Path) -> Result<Self> {
+    /// Load a key pair from a private key file
+    pub fn from_private_key_file(key_file: &Path) -> Result<Self> {
         let private_key = RsaPrivateKey::read_pkcs1_pem_file(key_file)?;
         let public_key = RsaPublicKey::from(&private_key);
         Ok(Self {
@@ -107,7 +111,7 @@ mod tests {
             GozmRS8Nvxc5Y6/bX+ktoiGbMZxpsf/EazgCzoAybolkBg7boEC+IN4r2/Ps70kZ
             q5fx0NtScwimW9715m040/Qrdfv5LHbKfWWW5IaC9QBJoKLYRebqeA==
             -----END RSA PRIVATE KEY-----"};
-        RsaKeyPair::new_from_private_key_str(pem).unwrap()
+        RsaKeyPair::from_private_key_str(pem).unwrap()
     }
 
     #[test]
@@ -123,7 +127,7 @@ mod tests {
     fn new_key_pair_from_file() {
         let key_file = mt_test_util::get_resource_file("test-private-key.pem");
         println!("{}", key_file.display());
-        let loaded_key_pair = RsaKeyPair::new_from_private_key_file(&key_file).unwrap();
+        let loaded_key_pair = RsaKeyPair::from_private_key_file(&key_file).unwrap();
         let expected_key_pair = get_example_key_pair();
         assert_eq!(expected_key_pair.private_key, loaded_key_pair.private_key);
     }

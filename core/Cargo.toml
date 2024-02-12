@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-indoc = "2"
 rsa = "0.9.6"
 rand = "0.8.5"
 base64 = "0.21.5"
 anyhow = "1.0"
 
 [dev-dependencies]
+indoc = "2"
 mt-test-util = { path = "/Users/maisytse/Documents/Workspace/rust-util/mt-test-util" }
 
 # faster RSA key gen
