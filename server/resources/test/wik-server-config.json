@@ -1,0 +1,14 @@
+{
+    "server_ip": null,
+    "server_port": 3000,
+    "tls": {
+        "cert_file": "/Users/maisytse/cert/test-cert.pem",
+        "key_file": "/Users/maisytse/cert/test-key.pem"
+    },
+    "logging": {
+        "log_dir": "./log",
+        "log_file": "wik-server.log",
+        "level": "trace",
+        "rotate_interval": "hour"
+    }
+}

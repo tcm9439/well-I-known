@@ -104,7 +104,7 @@ cli-name subscribe
 - clap - Command Line Argument Parser for Rust
   - https://docs.rs/clap/latest/clap/
   - example: https://github.com/tokio-rs/mini-redis/blob/master/src/bin/server.rs
-- ini config parser
-  - https://docs.rs/configparser/latest/configparser/
+- config parser
+  - https://docs.rs/figment/latest/figment/
 - rsa
   - https://docs.rs/rsa/latest/rsa/
