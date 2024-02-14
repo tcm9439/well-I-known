@@ -4,8 +4,8 @@ use base64::{Engine as _, engine::general_purpose};
 use rand::Rng;
 
 pub struct Password {
-    hash: String,
-    salt: String,
+    pub hash: String,
+    pub salt: String,
 }
 
 /// generate a random 32 bits salt 
@@ -22,6 +22,14 @@ fn hash_password(password: &str, salt: &str) -> Result<String>{
     }
 }
 
+pub fn verify_password(password: &str, hash: &str, salt: &str) -> bool {
+    let to_be_hashed = format!("{}{}", password, salt);
+    match verify(to_be_hashed, hash) {
+        Ok(v) => v,
+        Err(_) => false
+    }
+}
+
 impl Password {
     pub fn new(password: &str) -> Result<Password> {
         let salt = generate_salt();
@@ -33,11 +41,7 @@ impl Password {
     }
 
     pub fn verify(&self, password_to_verify: &str) -> bool {
-        let to_be_hashed = format!("{}{}", password_to_verify, self.salt);
-        match verify(to_be_hashed, &self.hash) {
-            Ok(v) => v,
-            Err(_) => false
-        }
+        verify_password(password_to_verify, &self.hash, &self.salt)
     }
 }
 

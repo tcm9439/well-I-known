@@ -1,6 +1,7 @@
 {
     "server_ip": null,
     "server_port": 3000,
+    "db_path": "./data/temp/demo.sqlite",
     "tls": {
         "cert_file": "/Users/maisytse/cert/test-cert.pem",
         "key_file": "/Users/maisytse/cert/test-key.pem"

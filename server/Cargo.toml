@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+well-i-known-core = { path = "../core", version = "0.1.0" }
+
 axum = "0.7.4"
 axum-extra = { version = "0.9.2", features = ["typed-header"] }
 axum-server = { version = "0.6", features = ["tls-rustls"] }
@@ -17,3 +19,6 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 tracing-appender = "0.2.3"
 tracing = "0.1.40"
 figment = { version = "0.10.14", features = ["json"] }
+sea-query = { version = "0.30.7", features = ["attr"] }
+sqlx = { version = "0.7.3", features = ["sqlite","runtime-tokio"] }
+anyhow = "1.0.79"

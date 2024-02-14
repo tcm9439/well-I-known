@@ -13,11 +13,6 @@ use std::ops::Add;
 
 use crate::error::AuthError;
 
-// buggy
-// static DEFAULT_EXPIRATION: Lazy<Duration> = Lazy::new(||
-//     Duration::days(1)
-// );
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtClaims {
     sub: String,        // Subject (whom the token refers to)

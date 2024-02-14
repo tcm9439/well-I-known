@@ -21,21 +21,24 @@
 - Sqlite
 - Tables
   - User
-    - name (PK)
-    - role
+    - username (PK)
+    - role - TEXT (app, admin, superuser)
     - pub key
     - encrypted password salt
     - encrypted password
   - Admin_Access_Right
-    - admin's user id (FK to user)
+    - admin's username (FK to user)
     - app that this admin has access right to
   - Application
-    - name (PK) (FK to user)
+    - name (PK) (FK to user username)
     - brief description (nullable)
   - Config_data
     - app name (PK) (FK to app)
     - key (PK)
     - value (encrypted, so in string format)
+- all id in TEXT need to be 
+  - in one word 
+  - char in [a-Z, 0-9, _]
 
 ## Server files
 - superuser private & public key

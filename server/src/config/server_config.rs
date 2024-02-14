@@ -11,6 +11,7 @@ use std::net::SocketAddr;
 pub struct WIKServerConfig {
     server_ip: Option<String>,
     server_port: u16,
+    pub db_path: String,
     pub tls: WIKServerTlsConfig,
     pub logging: WIKServerLoggerConfig,
 }
