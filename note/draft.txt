@@ -1,0 +1,21 @@
+### cli ###
+- if no server root path is provide, use the current directory where the cli is executed
+
+### config ###
+
+### common ###
+
+### server ###
+server dir/                 (current directory where the cli is executed to init the service)
+    config/
+        wellik-server.json  (default path to look for a config file if none is given)
+    certs/
+        root/               (generated when init)
+            wellik-root-key.pem    (private key)
+            wellik-root-cert.pem   (public key)
+        users/              (copy of user's public key, when create-user via cli)
+            username1-cert.pem 
+            username2-cert.pem
+    data/ 
+        wellik.sqlite       (generated when init, if database path is not provided in the config file)
+

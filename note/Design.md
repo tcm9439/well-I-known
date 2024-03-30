@@ -23,17 +23,16 @@
   - User
     - username (PK)
     - role - TEXT (app, admin, superuser)
-    - pub key
+    - public key
     - encrypted password salt
     - encrypted password
-    - description
   - Access_Right
     - admin's username (FK to user)
-    - app name 
+    - app name (FK to user)
       - that this admin has access right to
   - Config_data
     - app name (PK) (FK to app)
-    - key (PK)
+    - config key (PK)
     - value (encrypted, so in string format)
 - all id in TEXT need to be 
   - in one word 
@@ -61,28 +60,41 @@
 ## CLI
 ```sh
 # init the app
-cli-name init --file config-file
+wellik init --file <path-to-config-file>
 # ask for input > root (superuser) password: 
 # the app generate a root key pair 
 
-cli-name create app --name cli-name --pk pubic-key-file --info description
+### the other commands required login
+wellik login --user username
+# ask for input > password
+
+### then the user can use the following:
+## create users of different role
+create-app --name <app-name> --pk pubic-key-file
 # ask for input > app user password: 
 
-cli-name create admin --name username --pk pubic-key-file --app cli-name1,cli-name2
+create-admin --name <username> --pk pubic-key-file --app app-name1,app-name2
+# app: app that this admin has access to
+# require root role
 # ask for input > admin user password: 
 
-cli-name drop app
-cli-name drop admin
+## delete user
+remove-user app <app name>
+remove-user admin <username>
 
-cli-name alter admin add cli-name
-cli-name alter admin drop cli-name
+## update admin access right
+alter admin add cli-name
+alter admin drop cli-name
 
 # get / set the config
-cli-name get cli-name config-key
-cli-name set cli-name config-key
+get app-name <config-key>
+set app-name <config-key> <config-value>
 
 # subscribe the config-change channel
-cli-name subscribe
+subscribe
+
+### run a "script" that cointain the above commands
+run-all <path-to-a-text-file>
 ```
 
 ## rust library
