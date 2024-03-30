@@ -65,36 +65,35 @@ wellik init --file <path-to-config-file>
 # the app generate a root key pair 
 
 ### the other commands required login
-wellik login --user username
+wellik login <username>
 # ask for input > password
 
 ### then the user can use the following:
 ## create users of different role
-create-app --name <app-name> --pk pubic-key-file
+create app <app-name> pubic-key-file
 # ask for input > app user password: 
 
-create-admin --name <username> --pk pubic-key-file --app app-name1,app-name2
+create admin <username> pubic-key-file --access app-name1,app-name2
 # app: app that this admin has access to
 # require root role
 # ask for input > admin user password: 
 
 ## delete user
-remove-user app <app name>
-remove-user admin <username>
+remove <username>
 
 ## update admin access right
-alter admin add cli-name
-alter admin drop cli-name
+alteradmin <username> add <app-name>
+alteradmin <username> drop <app-name>
 
 # get / set the config
-get app-name <config-key>
-set app-name <config-key> <config-value>
+get <app-name> <config-key>
+set <app-name> <config-key> <config-value>
 
 # subscribe the config-change channel
 subscribe
 
 ### run a "script" that cointain the above commands
-run-all <path-to-a-text-file>
+run <path-to-a-text-file>
 ```
 
 ## rust library
