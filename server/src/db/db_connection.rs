@@ -3,11 +3,10 @@ use std::fs;
 use anyhow::{Context, Result};
 use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
 
-use super::user::User;
-
 #[derive(Clone)]
 pub struct DbConnection {
     pub pool: Pool<Sqlite>,
+    pub is_new_db: bool,
 }
 
 /// Returns if a new database is created.
@@ -37,21 +36,14 @@ pub async fn create_connection_pool(db_path: &str) -> Result<Pool<Sqlite>> {
 
 impl DbConnection {
     pub async fn new(db_path: &str) -> Result<Self> {
-        let new_db = create_database_if_not_exists(db_path).await?;
+        let is_new_db = create_database_if_not_exists(db_path).await?;
 
         let pool = create_connection_pool(db_path).await?;
         let conn = DbConnection {
-            pool
+            pool,
+            is_new_db,
         };
 
-        if new_db {
-            conn.create_database_tables().await;
-        }
-
         Ok(conn)
-    }
-
-    async fn create_database_tables(&self){
-        User::create_table(self).await;
     }
 }

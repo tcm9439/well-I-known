@@ -7,22 +7,23 @@ use axum_server::tls_rustls::RustlsConfig;
 use std::path::PathBuf;
 use std::net::SocketAddr;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct WIKServerConfig {
     server_ip: Option<String>,
     server_port: u16,
+    pub jwt_secret: String,
     pub db_path: String,
     pub tls: WIKServerTlsConfig,
     pub logging: WIKServerLoggerConfig,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct WIKServerTlsConfig {
     cert_file: String,
     key_file: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct WIKServerLoggerConfig {
     log_dir: String,
     log_file: String,

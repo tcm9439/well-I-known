@@ -2,13 +2,14 @@ mod error;
 mod auth;
 mod config;
 mod db;
+mod server_state;
 
 use axum::{routing::{get, post}, Router};
 
 use auth::{jwt_controller::authorize, jwt_claim::JwtClaims};
 use error::AuthError;
 use config::server_config::*;
-use db::{db_connection::DbConnection, user::User};
+use db::{access_right::AccessRightTable, config_data::ConfigDataTable, db_connection::DbConnection, user::UserTable, db_base::DbTable};
 use tracing::info;
 use tracing_appender::non_blocking::WorkerGuard;
 
@@ -28,18 +29,33 @@ fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
     guard
 }
 
+async fn create_tables(db_conn: &DbConnection) {
+    UserTable{}.create_table(db_conn).await;
+    AccessRightTable{}.create_table(db_conn).await;
+    ConfigDataTable{}.create_table(db_conn).await;
+}
+
 /// Start the server with the loaded server config.
 async fn start_server(server_config: &WIKServerConfig) {
     let tls_config = server_config.tls.get_rtlus_config().await;
     let db_conn = DbConnection::new(&server_config.db_path).await.unwrap();
 
+    // the database is just created, create the tables
+    if db_conn.is_new_db {
+        create_tables(&db_conn).await;
+    }
+
+    let server_state = server_state::ServerState {
+        db_conn,
+        config: server_config.clone(),
+        jwt_keys: auth::jwt_key::JwtKeys::new(server_config.jwt_secret.as_bytes()),
+    };
+
     // register the routes
     let app = Router::new()
         .route("/protected", get(protected))
         .route("/authorize", post(authorize))
-        .with_state(db_conn.clone());
-
-    User::create_user(&db_conn, "mt", "root", "password").await;
+        .with_state(server_state.into());
 
     // start the server
     axum_server::bind_rustls(server_config.get_server_ip(), tls_config)

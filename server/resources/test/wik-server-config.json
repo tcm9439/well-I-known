@@ -2,6 +2,7 @@
     "server_ip": null,
     "server_port": 3000,
     "db_path": "./data/temp/demo.sqlite",
+    "jwt_secret": "cc0f59f5a0cf15453aec50bee6f7bc7865ca48e858c6a058b57c73e82d2a7d40",
     "tls": {
         "cert_file": "/Users/maisytse/cert/test-cert.pem",
         "key_file": "/Users/maisytse/cert/test-key.pem"

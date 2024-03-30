@@ -26,12 +26,11 @@
     - pub key
     - encrypted password salt
     - encrypted password
-  - Admin_Access_Right
+    - description
+  - Access_Right
     - admin's username (FK to user)
-    - app that this admin has access right to
-  - Application
-    - name (PK) (FK to user username)
-    - brief description (nullable)
+    - app name 
+      - that this admin has access right to
   - Config_data
     - app name (PK) (FK to app)
     - key (PK)

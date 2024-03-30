@@ -12,7 +12,7 @@ bcrypt = "0.15.0"
 
 [dev-dependencies]
 indoc = "2"
-mt-test-util = { path = "/Users/maisytse/Documents/Workspace/rust-util/mt-test-util" }
+mt-test-util = { path = "/Users/maisytse/Documents/Workspace/rust/rust-util/mt-test-util" }
 
 # faster RSA key gen
 [profile.dev.package.num-bigint-dig]

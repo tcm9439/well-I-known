@@ -5,7 +5,7 @@ use sea_query::{enum_def, SqliteQueryBuilder, ColumnDef, Table, Query, Expr};
 use anyhow::Result;
 use tracing::warn;
 
-use super::db_connection::DbConnection;
+use super::{db_base::DbTable, db_connection::DbConnection};
 use well_i_known_core::password;
 
 #[enum_def]
@@ -15,6 +15,8 @@ pub struct User {
     role: String,
     encrypted_password: String,
     password_salt: String,
+    public_key: String,
+    description: String,
 }
 
 // insert a user
@@ -37,21 +39,6 @@ pub struct User {
 // .unwrap();
 
 impl User {
-    pub async fn create_table(db_conn: &DbConnection){
-        let sql = Table::create()
-            .table(UserIden::Table)
-            .if_not_exists()
-            .col(ColumnDef::new(UserIden::Username).string().primary_key())
-            .col(ColumnDef::new(UserIden::EncryptedPassword).string().not_null())
-            .col(ColumnDef::new(UserIden::PasswordSalt).string().not_null())
-            .col(ColumnDef::new(UserIden::Role).string().not_null())
-            .to_string(SqliteQueryBuilder);
-
-        sqlx::query(sql.as_str())
-            .execute(&db_conn.pool)
-            .await.expect("Failed to create table");
-    }
-
     pub async fn get_user(db_conn: &DbConnection, username: &str) -> Result<User>{
         let sql = Query::select()
             .columns([UserIden::Username, UserIden::Role, UserIden::EncryptedPassword, UserIden::PasswordSalt])
@@ -92,5 +79,26 @@ impl User {
                 Err(e)
             }
         }
+    }
+}
+
+
+pub struct UserTable {}
+impl DbTable for UserTable {
+    async fn create_table(&self, db_conn: &DbConnection) {
+        let sql = Table::create()
+            .table(UserIden::Table)
+            .if_not_exists()
+            .col(ColumnDef::new(UserIden::Username).string().primary_key())
+            .col(ColumnDef::new(UserIden::EncryptedPassword).string().not_null())
+            .col(ColumnDef::new(UserIden::PasswordSalt).string().not_null())
+            .col(ColumnDef::new(UserIden::Role).string().not_null())
+            .col(ColumnDef::new(UserIden::PublicKey).string().not_null())
+            .col(ColumnDef::new(UserIden::Description).string())
+            .to_string(SqliteQueryBuilder);
+
+        sqlx::query(sql.as_str())
+            .execute(&db_conn.pool)
+            .await.expect("Failed to create table");
     }
 }
