@@ -6,22 +6,27 @@ use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
 #[derive(Clone)]
 pub struct DbConnection {
     pub pool: Pool<Sqlite>,
-    pub is_new_db: bool,
 }
 
-/// Returns if a new database is created.
-pub async fn create_database_if_not_exists(db_path: &str) -> Result<bool> {
+/// Check if the database file exists.
+pub async fn check_if_database_exists(db_path: &str) -> bool {
     match fs::metadata(db_path) {
         Ok(_) => {
             info!("Db file exists.");
-            return Ok(false);
+            return true;
         }
-        Err(_) => debug!("File '{}' does not exist. Creating a new database file now...", db_path),
+        Err(_) => {
+            debug!("File '{}' does not exist. Creating a new database file now...", db_path);
+            return false
+        }
     };
+}
 
+/// Create a new database at the given path.
+pub async fn create_database(db_path: &str) -> Result<()> {
     // create an empty database file
     let _ = fs::File::create(db_path)?;
-    return Ok(true);
+    return Ok(());
 }
 
 /// Create a new connection to the database.
@@ -36,12 +41,14 @@ pub async fn create_connection_pool(db_path: &str) -> Result<Pool<Sqlite>> {
 
 impl DbConnection {
     pub async fn new(db_path: &str) -> Result<Self> {
-        let is_new_db = create_database_if_not_exists(db_path).await?;
+        let db_exists = check_if_database_exists(db_path).await;
+        if !db_exists {
+            return Err(anyhow::anyhow!("Database file does not exist."));
+        }
 
         let pool = create_connection_pool(db_path).await?;
         let conn = DbConnection {
             pool,
-            is_new_db,
         };
 
         Ok(conn)

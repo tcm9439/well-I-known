@@ -10,3 +10,9 @@
 - build the release version
 - output in /target/release
 
+## types
+| Own     | Ref  |
+| ------- | ---- |
+| String  | &str |
+| PathBuf | Path |
+| Vec     | &[]  |

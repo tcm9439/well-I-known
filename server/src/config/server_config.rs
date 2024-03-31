@@ -9,8 +9,8 @@ use std::net::SocketAddr;
 
 #[derive(Deserialize, Clone)]
 pub struct WIKServerConfig {
-    server_ip: Option<String>,
-    server_port: u16,
+    pub server_ip: Option<String>,
+    pub server_port: u16,
     pub jwt_secret: String,
     pub db_path: String,
     pub tls: WIKServerTlsConfig,
@@ -33,6 +33,11 @@ pub struct WIKServerLoggerConfig {
 
 impl WIKServerConfig {
     pub fn new(json_config_filepath: &str) -> WIKServerConfig {
+        // check if the file exists
+        if !std::path::Path::new(json_config_filepath).exists() {
+            panic!("Config file not found: {}", json_config_filepath);
+        }
+        
         Figment::new()
         .merge(Json::file(json_config_filepath))
         .extract().expect("Fail to read config.")
@@ -44,6 +49,7 @@ impl WIKServerConfig {
             format!("{}:{}", ip_str, self.server_port).parse().unwrap()
         } else {
             // default to localhost
+            // let port: u16 = self.server_port as u16;
             SocketAddr::from(([127, 0, 0, 1], self.server_port))
         }
     }

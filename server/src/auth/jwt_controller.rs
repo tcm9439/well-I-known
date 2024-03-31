@@ -63,7 +63,7 @@ where
 
 /// Handler for the authorization user
 #[instrument(skip(state, payload))]
-pub async fn authorize(
+pub async fn authorize_handler(
     State(state): State<Arc<ServerState>>,
     Json(payload): Json<AuthPayload>
 ) -> Result<Json<AuthBody>, AuthError> {

@@ -36,32 +36,4 @@ This project aim to provide centralized server to store and manage configuration
   - config-key
 
 ### Server API
-- The manager host a http server for the user (app) to get, add, delete, update config
-- Config values
-  - GET /data/{app}/{key}
-    - According to the client role, get the encrypted value from the db
-    - send it to the client
-    - the client decrypt the value by it private key
-  - POST /data/{app}/{key}
-    - update / insert value
-    - Client send the plaintext value to the server (via HTTPS so is secure)
-    - server get all public key for user that has access right to this value
-    - server encrypt the value with each key (N key => N encrypted value) and store them in the database
-    - server publish a config change message
-  - DELETE /data/{app}/{key}
-- APP / User
-  - POST / DELETE /user & /admin
-    - create / delete a app / admin
-    - param: app, public key
-    - if app => also create / delete a corresponding app user. can used by admin (admin has the right on this app then) & superuser
-    - if admin => can only used by superuser
-    - response: 
-      - an constant encrypted using the provided public key
-      - client should try to decrypt the value to validate the encrypt-decrypt process 
-      - success => activate the account by making a API call
-      - fail => delete the user & try again
-  - POST /user/activate
-    - activate the user after validated the keys
-  - POST / DELETE /admin/access
-    - edit the admin access right
-    - can only used by superuser
+- The manager host a http server for the user (app / admin) to get, add, delete, update config

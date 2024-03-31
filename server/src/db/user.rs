@@ -15,8 +15,7 @@ pub struct User {
     role: String,
     encrypted_password: String,
     password_salt: String,
-    public_key: String,
-    description: String,
+    // public_key_path: String,
 }
 
 // insert a user
@@ -93,8 +92,7 @@ impl DbTable for UserTable {
             .col(ColumnDef::new(UserIden::EncryptedPassword).string().not_null())
             .col(ColumnDef::new(UserIden::PasswordSalt).string().not_null())
             .col(ColumnDef::new(UserIden::Role).string().not_null())
-            .col(ColumnDef::new(UserIden::PublicKey).string().not_null())
-            .col(ColumnDef::new(UserIden::Description).string())
+            // .col(ColumnDef::new(UserIden::PublicKeyPath).string().not_null())
             .to_string(SqliteQueryBuilder);
 
         sqlx::query(sql.as_str())

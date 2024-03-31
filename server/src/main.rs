@@ -3,14 +3,20 @@ mod auth;
 mod config;
 mod db;
 mod server_state;
+mod server_init;
+mod server_controller;
 
-use axum::{routing::{get, post}, Router};
+use std::path::Path;
 
-use auth::{jwt_controller::authorize, jwt_claim::JwtClaims};
-use error::AuthError;
+use auth::jwt_controller::authorize_handler;
+use db::db_connection::DbConnection;
+use server_controller::*;
 use config::server_config::*;
-use db::{access_right::AccessRightTable, config_data::ConfigDataTable, db_connection::DbConnection, user::UserTable, db_base::DbTable};
-use tracing::info;
+
+use axum::{routing::{delete, get, post}, Router};
+use server_state::ServerState;
+use anyhow::Result;
+use tracing::{debug, info, trace};
 use tracing_appender::non_blocking::WorkerGuard;
 
 /// Init tracing by the loaded logging config.
@@ -29,57 +35,53 @@ fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
     guard
 }
 
-async fn create_tables(db_conn: &DbConnection) {
-    UserTable{}.create_table(db_conn).await;
-    AccessRightTable{}.create_table(db_conn).await;
-    ConfigDataTable{}.create_table(db_conn).await;
-}
-
 /// Start the server with the loaded server config.
-async fn start_server(server_config: &WIKServerConfig) {
+/// server_base_dir: The base directory of the server data.
+/// server_config: The server config.
+async fn start_server(server_base_dir: &Path, server_config: &WIKServerConfig) -> Result<()> {
+    debug!("Starting server...");
+    debug!("Init TLS...");
     let tls_config = server_config.tls.get_rtlus_config().await;
-    let db_conn = DbConnection::new(&server_config.db_path).await.unwrap();
+    debug!("Init database connection...");
+    let db_conn = DbConnection::new(&server_config.db_path).await?;
 
-    // the database is just created, create the tables
-    if db_conn.is_new_db {
-        create_tables(&db_conn).await;
-    }
-
-    let server_state = server_state::ServerState {
+    let server_state = ServerState {
         db_conn,
         config: server_config.clone(),
         jwt_keys: auth::jwt_key::JwtKeys::new(server_config.jwt_secret.as_bytes()),
     };
 
     // register the routes
+    trace!("Registering routes...");
     let app = Router::new()
-        .route("/protected", get(protected))
-        .route("/authorize", post(authorize))
+        .route("/login", post(authorize_handler))
+        .route("/data", get(get_data_handler))
+        .route("/data", post(alter_data_handler))
+        .route("/data", delete(delete_data_handler))
+        .route("/users/activate", post(activate_user_handler))
+        .route("/users", post(alter_user_handler))
+        .route("/users", delete(delete_user_handler))
+        .route("/admin/access", post(admin_access_handler))
         .with_state(server_state.into());
-
+    
+    info!("Server started at: {}", server_config.get_server_ip());
     // start the server
     axum_server::bind_rustls(server_config.get_server_ip(), tls_config)
         .serve(app.into_make_service())
         .await
         .unwrap();
+
+    Ok(())
 }
+
 
 #[tokio::main]
 async fn main() {
     // load the server config
-    let server_config = WIKServerConfig::new("./resources/test/wik-server-config.json");
+    let server_config = WIKServerConfig::new("/Users/maisytse/Documents/Workspace/rust/well-I-known/server/resources/test/wik-server-config.json");
 
     let _guard = init_tracing(&server_config);
     info!("Starting server...");
-    start_server(&server_config).await;
+    let server_path = Path::new("./data/temp/");
+    let _ = start_server(server_path, &server_config).await;
 }
-
-async fn protected(
-    claims: JwtClaims
-) -> Result<String, AuthError> {
-    // Send the protected data to the user
-    Ok(format!(
-        "Welcome to the protected area :)\nYour data:\n{claims}",
-    ))
-}
-

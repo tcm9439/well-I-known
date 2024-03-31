@@ -23,9 +23,10 @@
   - User
     - username (PK)
     - role - TEXT (app, admin, superuser)
-    - public key
-    - encrypted password salt
+    - path to the public key pem file
     - encrypted password
+    - password salt
+    - active - boolean, if the key is validated by handshake
   - Access_Right
     - admin's username (FK to user)
     - app name (FK to user)
@@ -58,18 +59,30 @@
 - cert filepath for HTTPS
 
 ## CLI
+server direcory can be given by (distinguish by this order)
+- param (--dir)
+- global variable (linux) WELLIK_HOME
+- current directory
+
 ```sh
 # init the app
-wellik init --file <path-to-config-file>
+wellik init --file <path-to-config-file> --dir <optional path to the server dir>
 # ask for input > root (superuser) password: 
 # the app generate a root key pair 
+# ask if wants to set the dir in the global var WELLIK_HOME (via figment)
+
+# start/stop the server
+wellik start --dir <server dir>   # start the server & write the pid to a file, need to be run with `nohup &`
+wellik stop  --dir <server dir>   # kill the old server with the pidfile by process::Command
 
 ### the other commands required login
-wellik login <username>
+wellik login <username> --dir <server dir>
 # ask for input > password
 
-### then the user can use the following:
-## create users of different role
+#############################################
+### Commands in the app's shell after login #
+#############################################
+# create users of different role
 create app <app-name> pubic-key-file
 # ask for input > app user password: 
 
