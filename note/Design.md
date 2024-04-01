@@ -66,7 +66,7 @@ server direcory can be given by (distinguish by this order)
 
 ```sh
 # init the app
-wellik init --file <path-to-config-file> --dir <optional path to the server dir>
+wellik init --dir <optional path to the server dir>
 # ask for input > root (superuser) password: 
 # the app generate a root key pair 
 # ask if wants to set the dir in the global var WELLIK_HOME (via figment)

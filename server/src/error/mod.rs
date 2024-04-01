@@ -1,2 +1,2 @@
-pub mod auth_error;
-pub use auth_error::*;
+pub mod api_error;
+pub use api_error::*;

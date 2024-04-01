@@ -1,12 +1,12 @@
-use serde::{Serialize, Deserialize};
+use serde::{self, Serialize, Deserialize};
 
+/// Post body parameter for update / insert user
 #[derive(Deserialize)]
 pub struct UpdateUserParam {
-    // #[serde(default, deserialize_with = "empty_string_as_none")]
     pub username: String,
     pub password: String,           // plaintext
-    pub role: String,               // only for new user
-    pub public_key: String,         // only for new user
+    pub role: Option<String>,       // only for new user
+    pub public_key: Option<String>, // only for new user
 }
 
 #[derive(Deserialize)]
@@ -22,5 +22,13 @@ pub struct ValidateUserParam {
 #[derive(Serialize, Deserialize)]
 pub struct ValidateUserResponse {
     pub plaintext: String,
+    // encrypted version of the plaintext by the user's (id by jwt) public key 
     pub encrypted: String,
+}
+
+#[derive(Deserialize)]
+pub struct AdminAccessParam {
+    pub operation: String,      // ApiOperation: create / delete
+    pub admin: String,          // admin username
+    pub app: String,            // app name
 }

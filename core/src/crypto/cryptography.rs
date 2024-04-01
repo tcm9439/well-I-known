@@ -1,6 +1,6 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey, pkcs1::DecodeRsaPrivateKey};
+use rsa::{pkcs1::{DecodeRsaPrivateKey, EncodeRsaPrivateKey, EncodeRsaPublicKey}, Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
 use base64::{Engine as _, engine::general_purpose};
 use anyhow::Result;
 
@@ -45,6 +45,13 @@ impl RsaKeyPair {
             public_key,
             private_key
         })
+    }
+
+    pub fn save_to_pem_file(&self, directory: &PathBuf, 
+        private_key_filename: &str, public_key_file_name: &str) -> Result<()> {
+        self.public_key.write_pkcs1_pem_file(directory.join(public_key_file_name), rsa::pkcs8::LineEnding::LF)?;
+        self.private_key.write_pkcs1_pem_file(directory.join(private_key_filename), rsa::pkcs8::LineEnding::LF)?;
+        Ok(())
     }
 }
 
@@ -130,5 +137,16 @@ mod tests {
         let loaded_key_pair = RsaKeyPair::from_private_key_file(&key_file).unwrap();
         let expected_key_pair = get_example_key_pair();
         assert_eq!(expected_key_pair.private_key, loaded_key_pair.private_key);
+    }
+
+    #[test]
+    fn save_key_pair_to_file() {
+        let key_pair = get_example_key_pair();
+        let temp_dir = mt_test_util::get_output_dir();
+        let private_key_filename = "private-key.pem";
+        let public_key_filename = "public-key.pem";
+        key_pair.save_to_pem_file(&temp_dir, private_key_filename, public_key_filename).unwrap();
+        let loaded_key_pair = RsaKeyPair::from_private_key_file(&temp_dir.join(private_key_filename)).unwrap();
+        assert_eq!(key_pair.private_key, loaded_key_pair.private_key);
     }
 }

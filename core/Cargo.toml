@@ -4,12 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rsa = "0.9.6"
+rsa = { version = "0.9.6", features = ["pem"]}
 rand = "0.8.5"
 base64 = "0.21.5"
 anyhow = "1.0"
 bcrypt = "0.15.0"
-serde = "1.0.197"
+serde = { version = "1.0.197", features = ["derive"] }
+strum = "0.26"
+strum_macros = "0.26"
 
 [dev-dependencies]
 indoc = "2"

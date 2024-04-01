@@ -13,7 +13,6 @@ const WIK_SERVER_HOME_ENV_VAR_NAME: &str = "WELLIK_HOME";
 /// All config needed for the server.
 pub struct WIKServerEnvironmentConfig {
     pub base_dir: PathBuf,          // base directory of the server
-    pub config_file: PathBuf,       // config file path
     pub config: WIKServerConfig,    // server config
 }
 
@@ -39,6 +38,39 @@ impl WIKServerEnvironmentConfig {
     pub fn get_base_dir_from_current_dir() -> PathBuf {
         // panic if the current directory is not found
         std::env::current_dir().unwrap()
+    }
+
+    pub fn get_config_dir_path(&self) -> PathBuf {
+        self.base_dir.join("config")
+    }
+
+    pub fn get_config_file_path(&self) -> PathBuf {
+        self.get_config_dir_path().join("wellik-server.json")
+    }
+
+    pub fn get_tls_certs_dir_path(&self) -> PathBuf {
+        self.base_dir.join("certs").join("tls")
+    }
+
+    pub fn get_root_certs_dir_path(&self) -> PathBuf {
+        self.base_dir.join("certs").join("root")
+    }
+
+    pub fn get_users_certs_dir_path(&self) -> PathBuf {
+        self.base_dir.join("certs").join("users")
+    }
+
+    pub fn get_data_dir_path(&self) -> PathBuf {
+        self.base_dir.join("data")
+    }
+
+    pub fn get_db_path(&self) -> PathBuf {
+        self.get_data_dir_path().join("wellik.sqlite")
+    }
+
+    pub fn get_log_dir_path(&self) -> PathBuf {
+        let log_dir = &self.config.logging.log_dir;
+        self.to_full_path(log_dir)
     }
 }
 

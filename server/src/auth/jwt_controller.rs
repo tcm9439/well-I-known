@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{info, instrument, warn};
 
 use super::jwt_claim::JwtClaims;
-use crate::{db::user::User, error::AuthError, server_state::ServerState};
+use crate::{db::user::User, error::ApiError, server_state::ServerState};
 
 /// Response sent to the user after authorization
 #[derive(Debug, Serialize)]
@@ -43,19 +43,19 @@ where
     Arc<ServerState>: FromRef<S>,
     S: Send + Sync,
 {
-    type Rejection = AuthError;
+    type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         // Extract the token from the authorization header
         let TypedHeader(Authorization(bearer)) = parts
             .extract::<TypedHeader<Authorization<Bearer>>>()
             .await
-            .map_err(|_| AuthError::InvalidToken)?;
+            .map_err(|_| ApiError::InvalidToken)?;
         // Decode the user data
         let state = Arc::from_ref(state);
         let token_data = decode::<JwtClaims>(bearer.token(), 
             &state.jwt_keys.decoding, &Validation::default())
-            .map_err(|_| AuthError::InvalidToken)?;
+            .map_err(|_| ApiError::InvalidToken)?;
 
         Ok(token_data.claims)
     }
@@ -66,23 +66,23 @@ where
 pub async fn authorize_handler(
     State(state): State<Arc<ServerState>>,
     Json(payload): Json<AuthPayload>
-) -> Result<Json<AuthBody>, AuthError> {
+) -> Result<Json<AuthBody>, ApiError> {
     info!("Accept authorize user request.");
     // Check if the user sent the credentials
     if payload.username.is_empty() || payload.password.is_empty() {
         warn!("Missing credentials");
-        return Err(AuthError::MissingCredentials);
+        return Err(ApiError::MissingCredentials);
     }
 
     match User::auth_user(&state.db_conn, &payload.username, &payload.password).await {
         Ok(false) => {
             warn!("Wrong credentials");
-            return Err(AuthError::WrongCredentials);
+            return Err(ApiError::WrongCredentials);
         },
         // if the error is a AuthError, return it
         Err(e) => {
             warn!("Failed to authenticate user: {:?}", e);
-            return Err(AuthError::ServerError);
+            return Err(ApiError::ServerError);
         },
         _ => {}
     }

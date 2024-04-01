@@ -9,7 +9,7 @@ pub struct DbConnection {
 }
 
 /// Check if the database file exists.
-pub async fn check_if_database_exists(db_path: &str) -> bool {
+pub fn check_if_database_exists(db_path: &PathBuf) -> bool {
     match fs::metadata(db_path) {
         Ok(_) => {
             info!("Db file exists.");
@@ -23,7 +23,7 @@ pub async fn check_if_database_exists(db_path: &str) -> bool {
 }
 
 /// Create a new database at the given path.
-pub async fn create_database(db_path: &str) -> Result<()> {
+pub fn create_database(db_path: &PathBuf) -> Result<()> {
     // create an empty database file
     let _ = fs::File::create(db_path)?;
     return Ok(());
@@ -31,7 +31,7 @@ pub async fn create_database(db_path: &str) -> Result<()> {
 
 /// Create a new connection to the database.
 /// If the connection fail, check if the database file exists.
-pub async fn create_connection_pool(db_path: &str) -> Result<Pool<Sqlite>> {
+pub async fn create_connection_pool(db_path: &PathBuf) -> Result<Pool<Sqlite>> {
     let db_path = String::from("sqlite:") + db_path;
     SqlitePoolOptions::new()
         .connect(&db_path)
@@ -41,7 +41,7 @@ pub async fn create_connection_pool(db_path: &str) -> Result<Pool<Sqlite>> {
 
 impl DbConnection {
     pub async fn new(db_path: &str) -> Result<Self> {
-        let db_exists = check_if_database_exists(db_path).await;
+        let db_exists = check_if_database_exists(db_path);
         if !db_exists {
             return Err(anyhow::anyhow!("Database file does not exist."));
         }

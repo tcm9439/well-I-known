@@ -1,5 +1,5 @@
 use crate::auth::jwt_claim::JwtClaims;
-use crate::error::AuthError;
+use crate::error::ApiError;
 use well_i_known_core::api::user::*;
 use axum::Json;
 use tracing::{info, instrument};
@@ -8,7 +8,7 @@ use tracing::{info, instrument};
 pub async fn alter_user_handler(
     claims: JwtClaims,
     Json(payload): Json<UpdateUserParam>
-) -> Result<String, AuthError> {
+) -> Result<String, ApiError> {
     // Ok(format!("Enter alter_user_handler"))
     Ok(format!(
         "Enter alter_user_handler {}",
@@ -18,7 +18,7 @@ pub async fn alter_user_handler(
 
 pub async fn delete_user_handler(
     claims: JwtClaims
-) -> Result<String, AuthError> {
+) -> Result<String, ApiError> {
     Ok(format!(
         "Enter delete_user_handler",
     ))
@@ -26,7 +26,7 @@ pub async fn delete_user_handler(
 
 pub async fn validate_user_handler(
     claims: JwtClaims
-) -> Result<Json<ValidateUserResponse>, AuthError> {
+) -> Result<Json<ValidateUserResponse>, ApiError> {
     let response = ValidateUserResponse {
         plaintext: "abc".to_string(),
         encrypted: "def".to_string(),
