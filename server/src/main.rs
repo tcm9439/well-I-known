@@ -2,15 +2,17 @@ mod error;
 mod auth;
 mod config;
 mod db;
+mod controller;
 mod server_state;
 mod server_init;
 mod server_controller;
 
-use std::{io, path::Path};
+use std::path::Path;
 
 use auth::jwt_controller::authorize_handler;
 use db::db_connection::DbConnection;
 use server_controller::*;
+use controller::user::*;
 use config::server_config::*;
 
 use axum::{routing::{delete, get, post}, Router};
@@ -18,7 +20,8 @@ use server_state::ServerState;
 use anyhow::Result;
 use tracing::{debug, info, trace};
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_subscriber::fmt::writer::MakeWriterExt;
+use tracing_subscriber::fmt;
+use tracing_subscriber::layer::SubscriberExt;
 
 /// Init tracing by the loaded logging config.
 fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
@@ -26,13 +29,15 @@ fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
     // _guard is needed to be in / returned to main()
     let (non_blocking_trace_file_appender, guard) = tracing_appender::non_blocking(server_config.logging.get_logging_file_appender());
 
-    // initialize tracing
-    tracing_subscriber::fmt()
+    // logging to stdout seems to be enabled by default for fmt::Subscriber
+    let subscriber = fmt::Subscriber::builder()
         .with_max_level(server_config.logging.get_logging_level())
-        .with_writer(non_blocking_trace_file_appender)
-        .with_writer(io::stdout.with_max_level(tracing::Level::INFO))
-        .with_ansi(false) // turn off ansi colors
-        .init();
+        .finish()
+        .with(fmt::Layer::default()
+            .with_ansi(false)
+            .with_writer(non_blocking_trace_file_appender));
+
+    tracing::subscriber::set_global_default(subscriber).expect("Unable to set global subscriber.");
 
     guard
 }
@@ -60,7 +65,7 @@ async fn start_server(server_base_dir: &Path, server_config: &WIKServerConfig) -
         .route("/data", get(get_data_handler))
         .route("/data", post(alter_data_handler))
         .route("/data", delete(delete_data_handler))
-        .route("/users/activate", post(activate_user_handler))
+        .route("/users/validate", post(validate_user_handler))
         .route("/users", post(alter_user_handler))
         .route("/users", delete(delete_user_handler))
         .route("/admin/access", post(admin_access_handler))
@@ -83,7 +88,6 @@ async fn main() {
     let server_config = WIKServerConfig::new("/Users/maisytse/Documents/Workspace/rust/well-I-known/server/resources/test/wik-server-config.json");
 
     let _guard = init_tracing(&server_config);
-    info!("Starting server...");
     let server_path = Path::new("./data/temp/");
     let _ = start_server(server_path, &server_config).await;
 }

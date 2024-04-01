@@ -55,7 +55,7 @@ mod tests {
     fn hash_then_verify() {
         let my_password = "SimpleSecret!";
         let password = Password::new(my_password).unwrap();
-        assert!(password.verify(my_password));
-        assert!(!password.verify("WrongPassword"));
+        assert_eq!(password.verify(my_password), true);
+        assert_eq!(password.verify("WrongPassword"), false);
     }
 }

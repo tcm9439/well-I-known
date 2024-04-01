@@ -41,19 +41,18 @@ server dir/                 (current directory where the cli is executed to init
     - body: app, config key, config value
 - APP / User
   - POST / DELETE `/users/`
-    - body: username
-    - create / delete a app / admin
+    - body: username, role, password
+    - (once only) create a root
+    - create / delete a app / admin 
     - param: app, public key
     - if app => also create / delete a corresponding app user. can used by admin (admin has the right on this app then) & superuser
     - if admin => can only used by superuser
-    - response: 
-      - an constant encrypted using the provided public key
-      - client should try to decrypt the value to validate the encrypt-decrypt process 
-      - success => activate the account by making a API call
-      - fail => delete the user & try again
-  - POST `/users/activate/`
+  - POST `/users/validate/`
     - body: username
-    - activate the user after validated the keys
+    - response:
+        - some random string (plaintext) 
+        - the random string encrypted using the user's public key
+        - client try to decrypt the value & check for match
   - POST `/admins/access`
     - body: admin username, appname, operation: grant / ban
     - edit the admin access right

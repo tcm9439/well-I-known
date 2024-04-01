@@ -6,7 +6,7 @@ use anyhow::Result;
 use tracing::warn;
 
 use super::{db_base::DbTable, db_connection::DbConnection};
-use well_i_known_core::password;
+use well_i_known_core::crypto::password;
 
 #[enum_def]
 #[derive(Clone, FromRow, Debug)]

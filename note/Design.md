@@ -76,8 +76,15 @@ wellik start --dir <server dir>   # start the server & write the pid to a file, 
 wellik stop  --dir <server dir>   # kill the old server with the pidfile by process::Command
 
 ### the other commands required login
-wellik login <username> --dir <server dir>
+#### root at server machine:
+wellik login root --dir <server dir>
 # ask for input > password
+# root user don't need to provide the private key as it is in the server base dir
+
+#### other user at server / other machine:
+wellik login <username> --server <server connection url> --key <private-key-file>
+# ask for input > password
+# the private key is for decrypted the config data
 
 #############################################
 ### Commands in the app's shell after login #

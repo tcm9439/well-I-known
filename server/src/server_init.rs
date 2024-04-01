@@ -3,7 +3,18 @@ use crate::db::{access_right::AccessRightTable, config_data::ConfigDataTable, db
 use tracing::{debug, info};
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
 use std::process::id;
+
+pub fn init_server_directory(path: &PathBuf){
+    debug!("Initializing server directory...");
+
+    // // Create the server directory if it does not exist
+    // if !path.exists() {
+    //     std::fs::create_dir_all(path).expect("Fail to create server directory.");
+    // }
+    debug!("Server directory initialized.");
+}
 
 pub async fn create_tables(db_conn: &DbConnection) {
     info!("Creating database tables...");

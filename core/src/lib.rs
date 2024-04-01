@@ -1,3 +1,3 @@
-pub mod cryptography;
-pub mod password;
-pub mod id_validation;
+pub mod crypto;
+pub mod modal;
+pub mod api;
