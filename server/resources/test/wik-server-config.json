@@ -1,5 +1,5 @@
 {
-    "server_ip": null,
+    "server_ip": "0.0.0.0",
     "server_port": 3000,
     "db_path": "/Users/maisytse/Documents/Workspace/rust/well-I-known/server/data/temp/demo.sqlite",
     "jwt_secret": "cc0f59f5a0cf15453aec50bee6f7bc7865ca48e858c6a058b57c73e82d2a7d40",
@@ -10,7 +10,7 @@
     "logging": {
         "log_dir": "/Users/maisytse/Documents/Workspace/rust/well-I-known/server/log",
         "log_file": "wik-server.log",
-        "level": "trace",
+        "level": "debug",
         "rotate_interval": "hour"
     }
 }

@@ -2,7 +2,8 @@ use crate::{auth::jwt_claim::JwtClaims, error::AuthError};
 use tracing::info;
 
 pub async fn get_data_handler(
-    claims: JwtClaims
+    claims: JwtClaims,
+    // Json(payload): Json<AuthPayload>
 ) -> Result<String, AuthError> {
     // Send the protected data to the user
     Ok(format!(

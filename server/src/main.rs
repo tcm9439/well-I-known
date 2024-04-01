@@ -6,7 +6,7 @@ mod server_state;
 mod server_init;
 mod server_controller;
 
-use std::path::Path;
+use std::{io, path::Path};
 
 use auth::jwt_controller::authorize_handler;
 use db::db_connection::DbConnection;
@@ -18,6 +18,7 @@ use server_state::ServerState;
 use anyhow::Result;
 use tracing::{debug, info, trace};
 use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber::fmt::writer::MakeWriterExt;
 
 /// Init tracing by the loaded logging config.
 fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
@@ -29,6 +30,7 @@ fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
     tracing_subscriber::fmt()
         .with_max_level(server_config.logging.get_logging_level())
         .with_writer(non_blocking_trace_file_appender)
+        .with_writer(io::stdout.with_max_level(tracing::Level::INFO))
         .with_ansi(false) // turn off ansi colors
         .init();
 
@@ -41,7 +43,7 @@ fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
 async fn start_server(server_base_dir: &Path, server_config: &WIKServerConfig) -> Result<()> {
     debug!("Starting server...");
     debug!("Init TLS...");
-    let tls_config = server_config.tls.get_rtlus_config().await;
+    let tls_config = server_config.tls.get_rustls_config().await;
     debug!("Init database connection...");
     let db_conn = DbConnection::new(&server_config.db_path).await?;
 
