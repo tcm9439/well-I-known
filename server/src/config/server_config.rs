@@ -1,6 +1,7 @@
+use well_i_known_core::crypto::cryptography::RsaKeyPair;
+
 use tracing::Level;
 use tracing_appender::rolling::RollingFileAppender;
-
 use serde::{Deserialize, Serialize};
 use figment::{Figment, providers::{Format, Json, Serialized}};
 use axum_server::tls_rustls::RustlsConfig;
@@ -9,11 +10,15 @@ use std::net::SocketAddr;
 
 // set a const string for environment variable name
 const WIK_SERVER_HOME_ENV_VAR_NAME: &str = "WELLIK_HOME";
+pub const ROOT_KEY_PEM_FILENAME: &str = "wellik-root-key.pem";
+pub const ROOT_CERT_PEM_FILENAME: &str = "wellik-root-cert.pem";
 
 /// All config needed for the server.
+#[derive(Clone)]
 pub struct WIKServerEnvironmentConfig {
     pub base_dir: PathBuf,          // base directory of the server
     pub config: WIKServerConfig,    // server config
+    pub root_key: Option<RsaKeyPair>,
 }
 
 impl WIKServerEnvironmentConfig {

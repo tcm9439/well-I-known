@@ -1,5 +1,9 @@
-use std::sync::Arc;
+use crate::auth::jwt_claim::JwtClaims;
+use crate::db;
+use crate::{error::ApiError, server_state::ServerState};
 
+use std::sync::Arc;
+use std::fmt::Debug;
 use axum::{extract::State, Json, async_trait, extract::{FromRef, FromRequestParts}, http::request::Parts, RequestPartsExt};
 use axum_extra::{
     headers::{authorization::Bearer, Authorization},
@@ -7,10 +11,7 @@ use axum_extra::{
 };
 use jsonwebtoken::{decode, Validation};
 use serde::{Deserialize, Serialize};
-use tracing::{info, instrument, warn};
-
-use super::jwt_claim::JwtClaims;
-use crate::{db::user::User, error::ApiError, server_state::ServerState};
+use tracing::*;
 
 /// Response sent to the user after authorization
 #[derive(Debug, Serialize)]
@@ -20,10 +21,17 @@ pub struct AuthBody {
 }
 
 /// Payload sent by the user to authorize
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct AuthPayload {
     username: String,
     password: String,
+}
+
+impl Debug for AuthPayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // don't print the password
+        write!(f, "AuthPayload {{ username: {} }}", self.username)
+    }
 }
 
 impl AuthBody {
@@ -53,7 +61,8 @@ where
             .map_err(|_| ApiError::InvalidToken)?;
         // Decode the user data
         let state = Arc::from_ref(state);
-        let token_data = decode::<JwtClaims>(bearer.token(), 
+        let token_data = decode::<JwtClaims>(
+            bearer.token(), 
             &state.jwt_keys.decoding, &Validation::default())
             .map_err(|_| ApiError::InvalidToken)?;
 
@@ -62,7 +71,7 @@ where
 }
 
 /// Handler for the authorization user
-#[instrument(skip(state, payload))]
+#[instrument(skip(state))]
 pub async fn authorize_handler(
     State(state): State<Arc<ServerState>>,
     Json(payload): Json<AuthPayload>
@@ -74,12 +83,13 @@ pub async fn authorize_handler(
         return Err(ApiError::MissingCredentials);
     }
 
-    match User::auth_user(&state.db_conn, &payload.username, &payload.password).await {
-        Ok(false) => {
+    let validate_result = db::user::auth_user(&state.db_conn, &payload.username, &payload.password).await;
+    
+    match validate_result {
+        Ok((false, _)) => {
             warn!("Wrong credentials");
             return Err(ApiError::WrongCredentials);
         },
-        // if the error is a AuthError, return it
         Err(e) => {
             warn!("Failed to authenticate user: {:?}", e);
             return Err(ApiError::ServerError);
@@ -89,7 +99,8 @@ pub async fn authorize_handler(
 
     info!("User authorized");
     // Create the authorization token
-    let token = JwtClaims::new(&payload.username).gen_token(&state.jwt_keys)?;
+    let (_, role) = validate_result.unwrap();
+    let token = JwtClaims::new(&payload.username, &role).gen_token(&state.jwt_keys)?;
 
     // Send the authorized token
     Ok(Json(AuthBody::new(token)))

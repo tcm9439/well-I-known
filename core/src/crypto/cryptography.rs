@@ -9,6 +9,7 @@ const RSA_KEY_SIZE: usize = 2048;
 // ref: https://docs.rs/rsa/latest/rsa/
 
 /// A key pair for RSA encryption
+#[derive(Clone)]
 pub struct RsaKeyPair {
     pub public_key: RsaPublicKey,
     pub private_key: RsaPrivateKey,
@@ -79,6 +80,11 @@ impl Decryption for RsaPrivateKey {
         let decrypted_data = self.decrypt(Pkcs1v15Encrypt, &data)?;
         Ok(String::from_utf8(decrypted_data)?)
     }
+}
+
+pub fn save_public_key_to_pem_file(public_key: &RsaPublicKey, file: &PathBuf) -> Result<()> {
+    public_key.write_pkcs1_pem_file(file, rsa::pkcs8::LineEnding::LF)?;
+    Ok(())
 }
 
 #[cfg(test)]

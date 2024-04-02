@@ -1,30 +1,32 @@
-mod error;
 mod auth;
 mod config;
-mod db;
 mod controller;
+mod db;
+mod error;
+mod repository;
 mod server_state;
 mod server_init;
-mod server_controller;
-
-use std::path::Path;
 
 use auth::jwt_controller::authorize_handler;
 use db::db_connection::DbConnection;
-use server_controller::*;
 use controller::user::*;
+use controller::admin::*;
+use controller::data::*;
 use config::server_config::*;
+use server_state::ServerState;
 
 use axum::{routing::{delete, get, post}, Router};
-use server_state::ServerState;
 use anyhow::Result;
-use tracing::{debug, info, trace};
+use tracing::*;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::fmt;
 use tracing_subscriber::layer::SubscriberExt;
+use std::path::Path;
 
 /// Init tracing by the loaded logging config.
 fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
+    // TODO change timestamp to local time instead of UTC
+    
     // register tracing file appender
     // _guard is needed to be in / returned to main()
     let (non_blocking_trace_file_appender, guard) = tracing_appender::non_blocking(server_config.logging.get_logging_file_appender());
@@ -45,17 +47,18 @@ fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
 /// Start the server with the loaded server config.
 /// server_base_dir: The base directory of the server data.
 /// server_config: The server config.
-async fn start_server(server_base_dir: &Path, server_config: &WIKServerConfig) -> Result<()> {
+async fn start_server(server_config: &WIKServerEnvironmentConfig) -> Result<()> {
     debug!("Starting server...");
     debug!("Init TLS...");
-    let tls_config = server_config.tls.get_rustls_config().await;
+    let tls_config = server_config.config.tls.get_rustls_config().await;
     debug!("Init database connection...");
-    let db_conn = DbConnection::new(&server_config.db_path).await?;
+    let db_path = server_config.to_full_path(&server_config.config.db_path);
+    let db_conn = DbConnection::new(&db_path).await?;
 
     let server_state = ServerState {
         db_conn,
         config: server_config.clone(),
-        jwt_keys: auth::jwt_key::JwtKeys::new(server_config.jwt_secret.as_bytes()),
+        jwt_keys: auth::jwt_key::JwtKeys::new(server_config.config.jwt_secret.as_bytes()),
     };
 
     // register the routes
@@ -71,9 +74,9 @@ async fn start_server(server_base_dir: &Path, server_config: &WIKServerConfig) -
         .route("/admin/access", post(admin_access_handler))
         .with_state(server_state.into());
     
-    info!("Server started at: {}", server_config.get_server_ip());
+    info!("Server started at: {}", server_config.config.get_server_ip());
     // start the server
-    axum_server::bind_rustls(server_config.get_server_ip(), tls_config)
+    axum_server::bind_rustls(server_config.config.get_server_ip(), tls_config)
         .serve(app.into_make_service())
         .await
         .unwrap();
@@ -89,5 +92,10 @@ async fn main() {
 
     let _guard = init_tracing(&server_config);
     let server_path = Path::new("./data/temp/");
-    let _ = start_server(server_path, &server_config).await;
+    let server_env_config = WIKServerEnvironmentConfig {
+        base_dir: server_path.to_path_buf(),
+        config: server_config,
+        root_key: None,
+    };
+    let _ = start_server(&server_env_config).await;
 }

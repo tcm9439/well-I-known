@@ -1,5 +1,5 @@
-use tracing::{debug, info};
-use std::fs;
+use tracing::*;
+use std::{fs, path::PathBuf};
 use anyhow::{Context, Result};
 use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
 
@@ -16,7 +16,7 @@ pub fn check_if_database_exists(db_path: &PathBuf) -> bool {
             return true;
         }
         Err(_) => {
-            debug!("File '{}' does not exist. Creating a new database file now...", db_path);
+            debug!("File '{:?}' does not exist. Creating a new database file now...", db_path);
             return false
         }
     };
@@ -32,15 +32,23 @@ pub fn create_database(db_path: &PathBuf) -> Result<()> {
 /// Create a new connection to the database.
 /// If the connection fail, check if the database file exists.
 pub async fn create_connection_pool(db_path: &PathBuf) -> Result<Pool<Sqlite>> {
-    let db_path = String::from("sqlite:") + db_path;
-    SqlitePoolOptions::new()
-        .connect(&db_path)
-        .await
-        .with_context(|| format!("Failed to create connection to {}", db_path))
+    let db_path = db_path.to_str();
+    match db_path {
+        Some(db_path) => {
+            let db_connection_str = String::from("sqlite:") + db_path;
+            SqlitePoolOptions::new()
+                .connect(&db_connection_str)
+                .await
+                .with_context(|| format!("Failed to create connection to {:?}", db_path))
+        }
+        None => {
+            Err(anyhow::anyhow!("Failed to convert db_path to string."))
+        }
+    }
 }
 
 impl DbConnection {
-    pub async fn new(db_path: &str) -> Result<Self> {
+    pub async fn new(db_path: &PathBuf) -> Result<Self> {
         let db_exists = check_if_database_exists(db_path);
         if !db_exists {
             return Err(anyhow::anyhow!("Database file does not exist."));

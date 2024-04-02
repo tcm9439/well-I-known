@@ -1,9 +1,10 @@
-use crate::db::db_base;
-use crate::db::{access_right::AccessRightTable, config_data::ConfigDataTable, db_connection::DbConnection, user::UserTable, db_base::DbTable};
-use crate::db::db_connection::{check_if_database_exists, create_database};
+use crate::db::{access_right::AccessRightTable, config_data::ConfigDataTable, user::UserTable};
+use crate::db::db_base::DbTable;
+use crate::db::db_connection::{DbConnection, check_if_database_exists, create_database};
+use crate::config::server_config::{self, WIKServerEnvironmentConfig};
 use well_i_known_core::crypto::cryptography::RsaKeyPair;
 
-use tracing::{debug, info, trace};
+use tracing::*;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -16,27 +17,32 @@ pub fn create_dir_if_not_exists(path: &PathBuf){
     }
 }
 
-pub fn init_server_directory(config: &WIKServerEnvironmentConfig){
+pub fn init_server_directory(config: &mut WIKServerEnvironmentConfig){
     debug!("Initializing server directory...");
 
     trace!("Creating server directory...");
-    create_dir_if_not_exists(config.get_config_dir_path());
-    create_dir_if_not_exists(config.get_tls_certs_dir_path());
+    create_dir_if_not_exists(&config.get_config_dir_path());
+    create_dir_if_not_exists(&config.get_tls_certs_dir_path());
     let root_certs_dir = config.get_root_certs_dir_path();
-    create_dir_if_not_exists(root_certs_dir);
-    create_dir_if_not_exists(config.get_users_certs_dir_path());
-    create_dir_if_not_exists(config.get_data_dir_path());
-    create_dir_if_not_exists(config.get_log_dir_path());
+    create_dir_if_not_exists(&root_certs_dir);
+    create_dir_if_not_exists(&config.get_users_certs_dir_path());
+    create_dir_if_not_exists(&config.get_data_dir_path());
+    create_dir_if_not_exists(&config.get_log_dir_path());
 
     trace!("Creating database...");
     let db_path = config.get_db_path();
-    if !check_if_database_exists(db_path) {
-        create_database(db_path);
+    if !check_if_database_exists(&db_path) {
+        create_database(&db_path);
     }
 
     trace!("Generating root keys...");
-    let root_key_pair = RsaKeyPair::new();
-    root_key_pair.save_to_pem_file(root_certs_dir, "wellik-root-key.pem", "wellik-root-cert.pem");
+    let root_key_pair = RsaKeyPair::new().expect("Fail to generate root key pair.");
+    root_key_pair.save_to_pem_file(
+        &root_certs_dir, 
+        server_config::ROOT_KEY_PEM_FILENAME, 
+        server_config::ROOT_CERT_PEM_FILENAME)
+        .expect("Fail to save root key pair.");
+    config.root_key = Some(root_key_pair);
 
     debug!("Server directory initialized.");
 }

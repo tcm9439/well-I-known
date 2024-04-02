@@ -42,7 +42,6 @@ server dir/                 (current directory where the cli is executed to init
 - APP / User
   - POST / DELETE `/users/`
     - body: username, role, password
-    - (once only) create a root
     - create / delete a app / admin 
     - param: app, public key
     - if app => also create / delete a corresponding app user. can used by admin (admin has the right on this app then) & superuser
