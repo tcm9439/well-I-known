@@ -16,4 +16,5 @@ Cargo.lock
 .vscode
 temp/
 log/
+output/
 .idea/

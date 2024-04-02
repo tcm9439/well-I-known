@@ -15,7 +15,6 @@ strum_macros = "0.26"
 
 [dev-dependencies]
 indoc = "2"
-mt-test-util = { path = "/Users/maisytse/Documents/Workspace/rust/rust-util/mt-test-util" }
 
 # faster RSA key gen
 [profile.dev.package.num-bigint-dig]

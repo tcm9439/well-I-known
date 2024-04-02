@@ -89,9 +89,13 @@ pub fn save_public_key_to_pem_file(public_key: &RsaPublicKey, file: &PathBuf) ->
 
 #[cfg(test)]
 mod tests {
-    use mt_test_util;
     use super::*;
     use indoc::indoc;
+
+    fn get_test_path(filename: &str) -> PathBuf {
+        let base_dir = env!("CARGO_MANIFEST_DIR");
+        Path::new(base_dir).join(filename).to_path_buf()
+    }
 
     fn get_example_key_pair() -> RsaKeyPair {
         // indoc => ignore the indentation of the string
@@ -138,7 +142,7 @@ mod tests {
 
     #[test]
     fn new_key_pair_from_file() {
-        let key_file = mt_test_util::get_resource_file("test-private-key.pem");
+        let key_file = get_test_path("resources/test/test-private-key.pem");
         println!("{}", key_file.display());
         let loaded_key_pair = RsaKeyPair::from_private_key_file(&key_file).unwrap();
         let expected_key_pair = get_example_key_pair();
@@ -148,7 +152,7 @@ mod tests {
     #[test]
     fn save_key_pair_to_file() {
         let key_pair = get_example_key_pair();
-        let temp_dir = mt_test_util::get_output_dir();
+        let temp_dir = get_test_path("output/test/");
         let private_key_filename = "private-key.pem";
         let public_key_filename = "public-key.pem";
         key_pair.save_to_pem_file(&temp_dir, private_key_filename, public_key_filename).unwrap();

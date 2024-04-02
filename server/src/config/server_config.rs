@@ -65,6 +65,10 @@ impl WIKServerEnvironmentConfig {
         self.base_dir.join("certs").join("users")
     }
 
+    pub fn get_users_certs_path(&self, username: &str) -> PathBuf {
+        self.get_users_certs_dir_path().join(format!("{}-cert.pem", username))
+    }
+
     pub fn get_data_dir_path(&self) -> PathBuf {
         self.base_dir.join("data")
     }

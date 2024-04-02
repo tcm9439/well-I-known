@@ -4,7 +4,7 @@ use well_i_known_core::crypto::password;
 use sqlx::FromRow;
 use sea_query::{enum_def, SqliteQueryBuilder, ColumnDef, Asterisk, Table, Query, Expr};
 use anyhow::Result;
-use tracing::warn;
+use tracing::{info, warn};
 
 #[enum_def]
 #[derive(Clone, FromRow, Debug)]
@@ -13,6 +13,31 @@ pub struct User {
     pub role: String,
     pub encrypted_password: String,
     pub password_salt: String,
+}
+
+const USER_COLUMNS: [UserIden; 4] = [
+    UserIden::Username,
+    UserIden::Role,
+    UserIden::EncryptedPassword,
+    UserIden::PasswordSalt,
+];
+
+pub struct UserTable {}
+impl DbTable for UserTable {
+    async fn create_table(db_conn: &DbConnection) {
+        let sql = Table::create()
+            .table(UserIden::Table)
+            .if_not_exists()
+            .col(ColumnDef::new(UserIden::Username).string().primary_key())
+            .col(ColumnDef::new(UserIden::EncryptedPassword).string().not_null())
+            .col(ColumnDef::new(UserIden::PasswordSalt).string().not_null())
+            .col(ColumnDef::new(UserIden::Role).string().not_null())
+            .to_string(SqliteQueryBuilder);
+
+        sqlx::query(sql.as_str())
+            .execute(&db_conn.pool)
+            .await.expect("Failed to create table");
+    }
 }
 
 pub async fn get_user(db_conn: &DbConnection, username: &str) -> Result<User>{
@@ -70,6 +95,7 @@ pub async fn create_user(db_conn: &DbConnection,
 
     let sql = Query::insert()
         .into_table(UserIden::Table)
+        .columns(USER_COLUMNS)
         .values([
             username.into(), 
             role.into(), 
@@ -132,10 +158,10 @@ pub async fn auth_user(db_conn: &DbConnection, username: &str, password: &str) -
         Ok(user) => {
             let valid_user = password::verify_password(password, &user.encrypted_password, &user.password_salt);
             if valid_user{
-                Ok((valid_user, user.role))
+                Ok((true, user.role))
             } else {
                 warn!("Failed to authenticate user {} due to wrong password", username);
-                Err(anyhow::anyhow!("Failed to authenticate user"))
+                Ok((false, "".to_string()))
             }
         },
         Err(e) => {
@@ -145,20 +171,85 @@ pub async fn auth_user(db_conn: &DbConnection, username: &str, password: &str) -
     }
 }
 
-pub struct UserTable {}
-impl DbTable for UserTable {
-    async fn create_table(&self, db_conn: &DbConnection) {
-        let sql = Table::create()
-            .table(UserIden::Table)
-            .if_not_exists()
-            .col(ColumnDef::new(UserIden::Username).string().primary_key())
-            .col(ColumnDef::new(UserIden::EncryptedPassword).string().not_null())
-            .col(ColumnDef::new(UserIden::PasswordSalt).string().not_null())
-            .col(ColumnDef::new(UserIden::Role).string().not_null())
-            .to_string(SqliteQueryBuilder);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::{Path, PathBuf};
+    use std::fs;
+    use crate::db::db_connection;
 
-        sqlx::query(sql.as_str())
-            .execute(&db_conn.pool)
-            .await.expect("Failed to create table");
+    fn get_test_path(filename: &str) -> PathBuf {
+        let base_dir = env!("CARGO_MANIFEST_DIR");
+        Path::new(base_dir).join(filename).to_path_buf()
+    }
+    
+    /// Create a new database for the test case by copying the base database
+    async fn create_test_db(test_case_name: &str) -> DbConnection{
+        let test_case_db_path = get_test_path(format!("output/{}.db", test_case_name).as_str());
+        let test_base_path = get_test_path("resources/test/base-test.db");
+        delete_test_db(test_case_name).await;
+        fs::copy(&test_base_path, &test_case_db_path).unwrap();
+    
+        // create the connection
+        let db_conn = db_connection::create_connection_pool(&test_case_db_path).await.unwrap();
+        DbConnection { pool: db_conn }
+    }
+
+    async fn delete_test_db(test_case_name: &str) {
+        let db_path = get_test_path(format!("output/{}.db", test_case_name).as_str());
+        // delete the file if it exists
+        if db_path.exists() {
+            fs::remove_file(&db_path).unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_and_get_user() {
+        let db_conn = create_test_db("test_create_and_get_user").await;
+        let _ = create_user(&db_conn, "test_user", "root", "password").await.unwrap();
+        let user = get_user(&db_conn, "test_user").await.unwrap();
+        assert_eq!(user.username, "test_user");
+        assert_eq!(user.role, "root");
+        delete_test_db("test_create_and_get_user").await;
+    }
+
+    #[tokio::test]
+    async fn test_user_exists() {
+        let db_conn = create_test_db("test_user_exists").await;
+        let exists = check_user_exists(&db_conn, "test_user").await.unwrap();
+        assert_eq!(exists, false);
+        let exists = check_root_exists(&db_conn).await.unwrap();
+        assert_eq!(exists, false);
+
+        let _ = create_user(&db_conn, "test_user", "root", "password").await.unwrap();
+
+        let exists = check_user_exists(&db_conn, "test_user").await.unwrap();
+        assert_eq!(exists, true);
+        let exists = check_root_exists(&db_conn).await.unwrap();
+        assert_eq!(exists, true);
+        delete_test_db("test_user_exists").await;
+    }
+
+    #[tokio::test]
+    async fn test_auth_user() {
+        let db_conn = create_test_db("test_auth_user").await;
+        let _ = create_user(&db_conn, "test_user", "root", "password").await.unwrap();
+        let (valid, role) = auth_user(&db_conn, "test_user", "password").await.unwrap();
+        assert_eq!(valid, true);
+        assert_eq!(role, "root");
+
+        let (valid, _) = auth_user(&db_conn, "test_user", "wrong_password").await.unwrap();
+        assert_eq!(valid, false);
+        delete_test_db("test_auth_user").await;
+    }
+
+    #[tokio::test]
+    async fn test_update_user() {
+        let db_conn = create_test_db("test_update_user").await;
+        let _ = create_user(&db_conn, "test_user", "root", "password").await.unwrap();
+        let _ = update_user(&db_conn, "test_user", "new_password").await.unwrap();
+        let user = get_user(&db_conn, "test_user").await.unwrap();
+        assert_eq!(password::verify_password("new_password", &user.encrypted_password, &user.password_salt), true);
+        delete_test_db("test_update_user").await;
     }
 }

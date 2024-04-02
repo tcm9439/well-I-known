@@ -16,7 +16,7 @@ pub fn check_if_database_exists(db_path: &PathBuf) -> bool {
             return true;
         }
         Err(_) => {
-            debug!("File '{:?}' does not exist. Creating a new database file now...", db_path);
+            debug!("File '{:?}' does not exist.", db_path);
             return false
         }
     };
@@ -27,6 +27,14 @@ pub fn create_database(db_path: &PathBuf) -> Result<()> {
     // create an empty database file
     let _ = fs::File::create(db_path)?;
     return Ok(());
+}
+
+pub async fn enable_sqlite_foreign_key_support(db_conn: &DbConnection) -> Result<()> {
+    let sql = "PRAGMA foreign_keys = ON;";
+    sqlx::query(sql)
+        .execute(&db_conn.pool)
+        .await?;
+    Ok(())
 }
 
 /// Create a new connection to the database.
