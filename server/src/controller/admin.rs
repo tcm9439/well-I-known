@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::auth::jwt_claim::JwtClaims;
 use crate::server_state::ServerState;
-use crate::auth::role_validation::authorized_role;
+use crate::auth::role_validation::*;
 use crate::error::ApiError;
 use crate::repository::{user, access_right};
 use well_i_known_core::api::admin::*;
@@ -12,19 +12,13 @@ use axum::extract::State;
 use axum::Json;
 use tracing::*;
 
-const ROLE_WITH_ACCESS: [UserRole; 2] = [UserRole::Admin, UserRole::Root];
 
 async fn basic_auth_for_admin_api(server_state: &Arc<ServerState>, claims: &JwtClaims, payload: &AdminAccessParam) -> Result<(), ApiError> {
     // check if user is admin
-    let authorized = authorized_role(&claims.role, &ROLE_WITH_ACCESS);
-    if !authorized {
-        warn!("User {} is not admin but try to create admin access.", &claims.sub);
-        return Err(ApiError::Unauthorized { 
-            message: "Unauthorized to create admin access right.".to_string() 
-        });
-    }
+    let authorized = is_admin(&claims.role);
+    throw_if_unauthorized(authorized, &claims.sub, "create admin access right")?;
 
-    // check if given user is admin
+    // check if the target user is admin (& valid)
     let is_admin = user::is_valid_user_of_role(
         &server_state.db_conn, 
         &payload.admin,
@@ -32,7 +26,7 @@ async fn basic_auth_for_admin_api(server_state: &Arc<ServerState>, claims: &JwtC
     ).await?;
 
     if !is_admin {
-        warn!("User {} is not admin.", &payload.admin);
+        warn!("User {} is not admin / does not exists.", &payload.admin);
         return Err(ApiError::InvalidArgument { 
             argument: "admin".to_string(), 
             message: "Given user is not admin.".to_string() 

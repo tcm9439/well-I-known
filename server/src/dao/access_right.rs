@@ -1,4 +1,5 @@
-use crate::db::{db_base::DbTable, db_connection::DbConnection, user::UserIden};
+use crate::dao::user::UserIden;
+use crate::db::{db_base::DbTable, db_connection::DbConnection};
 
 use sqlx::FromRow;
 use sea_query::{enum_def, ColumnDef, Expr, ForeignKey, ForeignKeyAction, Query, SqliteQueryBuilder, Table};
@@ -62,6 +63,8 @@ pub async fn get_user_access_rights(db_conn: &DbConnection, username: &str) -> R
     Ok(access_rights.into_iter().map(|(app_name, )| app_name).collect())
 }
 
+/// Delete all access rights of the given user.
+/// Used when deleting an admin which has access rights to some apps.
 pub async fn delete_all_access_of_user(db_conn: &DbConnection, username: &str) -> Result<()> {
     let sql = Query::delete()
         .from_table(AccessRightIden::Table)
@@ -75,6 +78,21 @@ pub async fn delete_all_access_of_user(db_conn: &DbConnection, username: &str) -
     Ok(())
 }
 
+// Delete all access rights of the given app.
+pub async fn delete_all_access_of_app(db_conn: &DbConnection, app_name: &str) -> Result<()> {
+    let sql = Query::delete()
+        .from_table(AccessRightIden::Table)
+        .cond_where(Expr::col(AccessRightIden::AppName).eq(app_name))
+        .to_string(SqliteQueryBuilder);
+
+    sqlx::query(sql.as_str())
+        .execute(&db_conn.pool)
+        .await?;
+
+    Ok(())
+}
+
+/// Add access right of all config of a given app to the given user.
 pub async fn add_access_right(db_conn: &DbConnection, username: &str, app_name: &str) -> Result<()> {
     let sql = Query::insert()
         .into_table(AccessRightIden::Table)
@@ -92,6 +110,7 @@ pub async fn add_access_right(db_conn: &DbConnection, username: &str, app_name: 
     Ok(())
 }
 
+/// Delete the access right of the given user to the given app.
 pub async fn delete_access_right(db_conn: &DbConnection, username: &str, app_name: &str) -> Result<()> {
     let sql = Query::delete()
         .from_table(AccessRightIden::Table)
@@ -106,6 +125,7 @@ pub async fn delete_access_right(db_conn: &DbConnection, username: &str, app_nam
     Ok(())
 }
 
+/// Check if the given user has access right to the given app.
 pub async fn check_access_right_exists(db_conn: &DbConnection, username: &str, app_name: &str) -> Result<bool> {
     let sql = Query::select()
         .expr(Expr::col(AccessRightIden::AppName).count())
@@ -125,7 +145,7 @@ pub async fn check_access_right_exists(db_conn: &DbConnection, username: &str, a
 mod tests {
     use super::*;
     use crate::db::db_test_util::create_test_db;
-    use crate::db::user;
+    use crate::dao::user;
     
     async fn create_access_right_test_db(test_case_name: &str) -> DbConnection{
         let db_conn = create_test_db(test_case_name).await;

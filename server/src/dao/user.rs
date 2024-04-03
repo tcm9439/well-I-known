@@ -1,10 +1,10 @@
-use super::{db_base::DbTable, db_connection::DbConnection};
+use crate::db::{db_base::DbTable, db_connection::DbConnection};
 use well_i_known_core::crypto::password;
 
 use sqlx::FromRow;
 use sea_query::{enum_def, SqliteQueryBuilder, ColumnDef, Asterisk, Table, Query, Expr};
 use anyhow::Result;
-use tracing::{info, warn};
+use tracing::*;
 
 #[enum_def]
 #[derive(Clone, FromRow, Debug)]
@@ -61,6 +61,21 @@ pub async fn check_user_exists(db_conn: &DbConnection, username: &str) -> Result
         .expr(Expr::col(UserIden::Username).count())
         .from(UserIden::Table)
         .and_where(Expr::col(UserIden::Username).eq(username))
+        .to_string(SqliteQueryBuilder);
+
+    let count: (i32, ) = sqlx::query_as(sql.as_str())
+        .fetch_one(&db_conn.pool)
+        .await?;
+
+    Ok(count.0 == 1)
+}
+
+pub async fn check_user_with_role_exists(db_conn: &DbConnection, username: &str, role: &str) -> Result<bool> {
+    let sql = Query::select()
+        .expr(Expr::col(UserIden::Username).count())
+        .from(UserIden::Table)
+        .and_where(Expr::col(UserIden::Username).eq(username))
+        .and_where(Expr::col(UserIden::Role).eq(role))
         .to_string(SqliteQueryBuilder);
 
     let count: (i32, ) = sqlx::query_as(sql.as_str())

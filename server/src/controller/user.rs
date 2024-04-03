@@ -73,6 +73,7 @@ pub async fn alter_user_handler(
             info!("Creating root user...");
             repository::user::create_root_user(
                 &server_state.db_conn,
+                &claims.sub,
                 &claims.get_role(),
                 &payload.username,
                 &role.unwrap(),
@@ -90,6 +91,7 @@ pub async fn alter_user_handler(
             let user_cert_dir = server_state.config.get_users_certs_dir_path();
             repository::user::create_user(
                 &server_state.db_conn,
+                &claims.sub,
                 &claims.get_role(),
                 &payload.username,
                 &role.unwrap(),

@@ -1,4 +1,4 @@
-use crate::db::{access_right::AccessRightTable, config_data::ConfigDataTable, user::UserTable};
+use crate::dao::{access_right::AccessRightTable, config_data::ConfigDataTable, user::UserTable};
 use crate::db::db_base::DbTable;
 use crate::db::db_connection::{self, DbConnection};
 use crate::config::server_config::{self, WIKServerEnvironmentConfig};

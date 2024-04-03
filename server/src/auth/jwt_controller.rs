@@ -1,5 +1,5 @@
 use crate::auth::jwt_claim::JwtClaims;
-use crate::db;
+use crate::dao;
 use crate::{error::ApiError, server_state::ServerState};
 
 use std::sync::Arc;
@@ -83,7 +83,7 @@ pub async fn authorize_handler(
         return Err(ApiError::MissingCredentials);
     }
 
-    let validate_result = db::user::auth_user(&state.db_conn, &payload.username, &payload.password).await;
+    let validate_result = dao::user::auth_user(&state.db_conn, &payload.username, &payload.password).await;
     
     match validate_result {
         Ok((false, _)) => {

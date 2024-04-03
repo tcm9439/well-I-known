@@ -3,7 +3,8 @@ use sea_query::{enum_def, ColumnDef, Expr, ForeignKey, ForeignKeyAction, Query, 
 use tracing::info;
 use anyhow::Result;
 
-use crate::db::{db_base::DbTable, db_connection::DbConnection, user::UserIden};
+use crate::db::{db_base::DbTable, db_connection::DbConnection};
+use crate::dao::user::UserIden;
 
 #[enum_def]
 #[derive(Clone, FromRow, Debug)]
@@ -171,7 +172,7 @@ pub async fn delete_all_data_for_owner(db_conn: &DbConnection, owner: &str) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::user;
+    use crate::dao::user;
     use crate::db::db_test_util::*;
 
     async fn create_config_data_test_db(test_case_name: &str) -> DbConnection{

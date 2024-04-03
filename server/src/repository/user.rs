@@ -1,76 +1,49 @@
 use well_i_known_core::modal::user::{self, SeverUserModal, UserRole};
 use well_i_known_core::modal::util::id_validation::validate_id;
-use crate::db::{self, db_connection::DbConnection};
+use crate::db::db_connection::DbConnection;
+use crate::db::db_executor::db_result_handler;
+use crate::dao;
+use crate::auth::role_validation::*;
 use crate::error::ApiError;
 
 use std::path::PathBuf;
 use tracing::*;
 
 pub async fn check_user_exists(db_conn: &DbConnection, username: &str) -> Result<bool, ApiError>{
-    let exists = db::user::check_user_exists(db_conn, username).await;
-    match exists {
-        Ok(exists) => Ok(exists),
-        Err(err) => {
-            warn!("Fail to check_user_exists. Database error: {}", err);
-            Err(ApiError::DatabaseError {
-                message: err.to_string(),
-            })
-        },
-    }
-}
-
-// TODO move this to role_validation.rs
-fn valid_to_create_role_by_role(creator: &UserRole, target_role: &UserRole) -> bool {
-    match creator {
-        UserRole::Root => true,
-        UserRole::Admin => {
-            match target_role {
-                UserRole::Root => false,
-                UserRole::Admin => false,
-                UserRole::App => true,
-            }
-        },
-        UserRole::App => false,
-    }
+    let exists = db_result_handler(
+        dao::user::check_user_exists(db_conn, username).await,
+        "check_user_exists")?;
+    Ok(exists)
 }
 
 pub async fn create_root_user(db_conn: &DbConnection, 
-    creator: &UserRole,
+    creator: &str, creator_role: &UserRole,
     username: &str, role: &UserRole, password: &str) -> Result<(), ApiError> {
     debug!("Creating a root user.");
-    if !valid_to_create_role_by_role(creator, role) {
-        warn!("Unauthorized to create a user with role '{}'.", role);
-        return Err(ApiError::Unauthorized { message: format!("Unauthorized to create a user with role '{}'.", role)});
-    }
+
+    throw_if_unauthorized(
+        can_create_account(creator_role, role),
+        creator, "create root user");
 
     // check if root already exists
-    let root_exists = db::user::check_root_exists(db_conn).await;
-    match root_exists {
-        Ok(true) => {
-            warn!("Try to create root user when root already exists.");
-            return Err(ApiError::DuplicateRecord);
-        },
-        Err(err) => {
-            warn!("Fail to check if root exists. Database error: {}", err);
-            return Err(ApiError::DatabaseError {
-                message: err.to_string(),
-            });
-        },
-        _ => {},
+    let root_exists = db_result_handler(
+        dao::user::check_root_exists(db_conn).await,
+        "check_root_exists")?;
+
+    if root_exists {
+        warn!("Try to create root user when root already exists.");
+        return Err(ApiError::DuplicateRecord);
     }
 
-    if let Err(error) = db::user::create_user(db_conn, username, &role.to_string(), password).await {
-        warn!("Fail to create root user. Database error: {}", error);
-        return Err(ApiError::DatabaseError {
-            message: error.to_string(),
-        });
-    }
+    db_result_handler(
+        dao::user::create_user(db_conn, username, &role.to_string(), password).await,
+        "create_root_user")?;
 
     Ok(())
 }
 
 pub async fn create_user(db_conn: &DbConnection, 
-    creator: &UserRole,
+    creator: &str, creator_role: &UserRole,
     username: &str, role: &UserRole, password: &str,
     public_key: &str, user_cert_path: &PathBuf) -> Result<(), ApiError> {
     
@@ -82,9 +55,9 @@ pub async fn create_user(db_conn: &DbConnection,
     }
 
     // validate the creator
-    if !valid_to_create_role_by_role(creator, role) {
-        return Err(ApiError::Unauthorized { message: format!("Unauthorized to create a user with role '{}'.", role)});
-    }
+    throw_if_unauthorized(
+        can_create_account(creator_role, role),
+        creator, "create app/admin user");
 
     // check if username valid
     if let Err(error) = validate_id(username) {
@@ -108,12 +81,9 @@ pub async fn create_user(db_conn: &DbConnection,
     }
 
     // create the user
-    if let Err(error) = db::user::create_user(db_conn, username, &role.to_string(), password).await {
-        warn!("Fail to create user. Database error: {}", error);
-        return Err(ApiError::DatabaseError {
-            message: error.to_string(),
-        });
-    }
+    db_result_handler(
+        dao::user::create_user(db_conn, username, &role.to_string(), password).await,
+        "create user")?;
 
     Ok(())
 }
@@ -126,12 +96,9 @@ pub async fn update_user(db_conn: &DbConnection, username: &str, password: &str)
     }
 
     // update the user
-    if let Err(error) = db::user::update_user(db_conn, username, password).await {
-        warn!("Fail to update user. Database error: {}", error);
-        return Err(ApiError::DatabaseError {
-            message: error.to_string(),
-        });
-    }
+    db_result_handler(
+        dao::user::update_user(db_conn, username, password).await,
+        "update user")?;
 
     Ok(())
 }
@@ -158,32 +125,23 @@ pub async fn delete_user(db_conn: &DbConnection, username: &str, user_cert_path:
 
         user::UserRole::Admin => {
             // delete the admin access right records
-            if let Err(error) = db::access_right::delete_all_access_of_user(db_conn, username).await {
-                warn!("Fail to delete user's access rights. Database error: {}", error);
-                return Err(ApiError::DatabaseError {
-                    message: error.to_string(),
-                });
+            db_result_handler(
+                dao::access_right::delete_all_access_of_user(db_conn, username).await,
+                "delete_all_access_of_user")?;
             }
-        }
-
+            
         user::UserRole::App => {
             // delete the app config records
-            if let Err(error) = db::config_data::delete_all_app_data(db_conn, username).await {
-                warn!("Fail to delete all the app configs. Database error: {}", error);
-                return Err(ApiError::DatabaseError {
-                    message: error.to_string(),
-                });
-            }
+            db_result_handler(
+                dao::access_right::delete_all_access_of_app(db_conn, username).await,
+                "delete_all_access_of_app")?;
         }
     }
 
     // delete the user
-    if let Err(error) = db::user::delete_user(db_conn, username).await {
-        warn!("Fail to delete user. Database error: {}", error);
-        return Err(ApiError::DatabaseError {
-            message: error.to_string(),
-        });
-    }
+    db_result_handler(
+        dao::user::delete_user(db_conn, username).await,
+        "delete user")?;
 
     // delete the user's cert file
     if let Err(error) = std::fs::remove_file(&user_cert_path) {
@@ -194,39 +152,23 @@ pub async fn delete_user(db_conn: &DbConnection, username: &str, user_cert_path:
 }
 
 pub async fn get_user(db_conn: &DbConnection, username: &str, user_cert_file: &PathBuf) -> Result<SeverUserModal, ApiError> {
-    let user = db::user::get_user(db_conn, username).await;
+    let user = db_result_handler(
+        dao::user::get_user(db_conn, username).await,
+        "get_user")?;
+
+
+    let user = SeverUserModal::new(username, &user.role, &user_cert_file);
     match user {
-        Ok(user) => {
-            let user = SeverUserModal::new(username, &user.role, &user_cert_file);
-            match user {
-                Ok(user) => return Ok(user),
-                Err(error) => {
-                    warn!("Fail to parse user. Error: {}", error);
-                    return Err(ApiError::ServerError);
-                },
-            }
-        },
+        Ok(user) => return Ok(user),
         Err(error) => {
-            warn!("Fail to get user. Database error: {}", error);
-            return Err(ApiError::DatabaseError { message: error.to_string() });
+            warn!("Fail to parse user. Error: {}", error);
+            return Err(ApiError::ServerError);
         },
-    };
+    }
 }
 
-// TODO see if this can be optimized
 pub async fn is_valid_user_of_role(db_conn: &DbConnection, username: &str, role: &UserRole) -> Result<bool, ApiError> {
-    let user = db::user::get_user(db_conn, username).await;
-    match user {
-        Ok(user) => {
-            if user.role == role.to_string() {
-                return Ok(true);
-            } else {
-                return Ok(false);
-            }
-        },
-        Err(error) => {
-            warn!("Fail to get user. Database error: {}", error);
-            return Err(ApiError::DatabaseError { message: error.to_string() });
-        },
-    };
+    db_result_handler(
+        dao::user::check_user_with_role_exists(db_conn, username, &role.to_string()).await,
+        "check_user_with_role_exists")
 }

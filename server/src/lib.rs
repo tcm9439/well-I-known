@@ -2,6 +2,7 @@ mod auth;
 mod config;
 mod controller;
 mod db;
+mod dao;
 mod error;
 mod repository;
 mod server_state;

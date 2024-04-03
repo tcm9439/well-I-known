@@ -13,7 +13,7 @@ pub enum ApiError {
     InvalidToken,
     ServerError,
     Unauthorized { message: String },
-    DatabaseError { message: String },
+    DatabaseError,
     RecordNotFound,     // Try to update / delete a record that does not exist
     DuplicateRecord,    // Try to create a record with a duplicate primary key
     InvalidArgument { argument: String, message: String },    // Invalid argument provided
@@ -32,10 +32,7 @@ impl IntoResponse for ApiError {
                 let error_message = format!("Unauthorized: {}", message);
                 (StatusCode::UNAUTHORIZED, error_message)
             },
-            ApiError::DatabaseError{ message } => {
-                let error_message = format!("Database error: {}", message);
-                (StatusCode::INTERNAL_SERVER_ERROR, error_message)
-            },
+            ApiError::DatabaseError => (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string()),
             ApiError::RecordNotFound => (StatusCode::NOT_FOUND, "Record not found".to_string()),
             ApiError::DuplicateRecord => (StatusCode::BAD_REQUEST, "Duplicate primary key".to_string()),
             ApiError::InvalidArgument{ argument, message } => {
