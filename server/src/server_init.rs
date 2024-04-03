@@ -2,7 +2,7 @@ use crate::db::{access_right::AccessRightTable, config_data::ConfigDataTable, us
 use crate::db::db_base::DbTable;
 use crate::db::db_connection::{self, DbConnection};
 use crate::config::server_config::{self, WIKServerEnvironmentConfig};
-use well_i_known_core::crypto::cryptography::RsaKeyPair;
+use well_i_known_core::crypto::cryptography::WikRsaKeyPair;
 
 use tracing::*;
 use std::fs::File;
@@ -36,8 +36,8 @@ pub fn init_server_directory(config: &mut WIKServerEnvironmentConfig){
     }
 
     trace!("Generating root keys...");
-    let root_key_pair = RsaKeyPair::new().expect("Fail to generate root key pair.");
-    root_key_pair.save_to_pem_file(
+    let root_key_pair = WikRsaKeyPair::new().expect("Fail to generate root key pair.");
+    root_key_pair.save(
         &root_certs_dir, 
         server_config::ROOT_KEY_PEM_FILENAME, 
         server_config::ROOT_CERT_PEM_FILENAME)

@@ -112,7 +112,7 @@ pub async fn delete_user_handler(
     repository::user::delete_user(
         &server_state.db_conn,
         &payload.username,
-        &server_state.config.get_users_certs_dir_path()
+        &server_state.config.get_users_certs_path(&payload.username)
     ).await?;
 
     Ok(())
@@ -132,16 +132,32 @@ pub async fn validate_user_handler(
         return Err(ApiError::RecordNotFound);
     }
 
-    // TODO generate random string of 30 characters
-    let plaintext = "abc";
-    // encrypt the string with user's pub key
-    let encrypted = "def";
+    let user = repository::user::get_user(
+        &server_state.db_conn,
+        &payload.username,
+        &server_state.config.get_users_certs_path(&payload.username)
+    ).await?;
+
+    let key = user.get_public_key();
+    if let Err(error) = key {
+        warn!("Fail to get user's public key. Error: {}", error);
+        return Err(ApiError::ServerError);
+    }
+    let (plaintext, encrypted) = key.unwrap().generate_validate_string();
 
     // pack the response
     let response = ValidateUserResponse {
-        plaintext: plaintext.to_string(),
-        encrypted: encrypted.to_string(),
+        plaintext,
+        encrypted,
     };
 
     Ok(Json(response))
+}
+
+#[cfg(test)]
+mod tests {
+    #[tokio::test]
+    fn test_alter_user_handler() {
+        // TODO
+    }
 }

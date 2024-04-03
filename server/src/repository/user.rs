@@ -1,4 +1,4 @@
-use well_i_known_core::modal::user::UserRole;
+use well_i_known_core::modal::user::{self, SeverUserModal, UserRole};
 use well_i_known_core::modal::util::id_validation::validate_id;
 use crate::db::{self, db_connection::DbConnection};
 use crate::error::ApiError;
@@ -71,7 +71,7 @@ pub async fn create_root_user(db_conn: &DbConnection,
 pub async fn create_user(db_conn: &DbConnection, 
     creator: &UserRole,
     username: &str, role: &UserRole, password: &str,
-    public_key: &str, user_cert_dir: &PathBuf) -> Result<(), ApiError> {
+    public_key: &str, user_cert_path: &PathBuf) -> Result<(), ApiError> {
     
     if role == &UserRole::Root {
         return Err(ApiError::InvalidArgument { 
@@ -100,9 +100,8 @@ pub async fn create_user(db_conn: &DbConnection,
     }
 
     // compute the users cert path
-    let public_key_path: PathBuf = user_cert_dir.join(format!("{}-cert.pem", username));
     // store the public key in the pem file
-    if let Err(error) = std::fs::write(&public_key_path, public_key) {
+    if let Err(error) = std::fs::write(&user_cert_path, public_key) {
         warn!("Fail to write public key to file. Error: {}", error);
         return Err(ApiError::ServerError);
     }
@@ -136,7 +135,7 @@ pub async fn update_user(db_conn: &DbConnection, username: &str, password: &str)
     Ok(())
 }
 
-pub async fn delete_user(db_conn: &DbConnection, username: &str, user_cert_dir: &PathBuf) -> Result<(), ApiError>{
+pub async fn delete_user(db_conn: &DbConnection, username: &str, user_cert_path: &PathBuf) -> Result<(), ApiError>{
     // check if user already exists
     if !check_user_exists(db_conn, username).await? {
         warn!("Try to delete user '{}' which does not exist.", username);
@@ -144,12 +143,38 @@ pub async fn delete_user(db_conn: &DbConnection, username: &str, user_cert_dir: 
     }
 
     // get the user's role
+    let user = get_user(db_conn, username, user_cert_path).await?;
     
-    // check if user is root (root cannot be deleted)
+    match user.role {
+        user::UserRole::Root => {
+            // root cannot be deleted
+            warn!("Try to delete root user, which is not allowed.");
+            return Err(ApiError::InvalidArgument { 
+                argument: "username".to_string(), 
+                message: "Root user cannot be deleted.".to_string() 
+            });
+        }
 
-    // role == admin => delete the admin access right records
+        user::UserRole::Admin => {
+            // delete the admin access right records
+            if let Err(error) = db::access_right::delete_all_access_of_user(db_conn, username).await {
+                warn!("Fail to delete user's access rights. Database error: {}", error);
+                return Err(ApiError::DatabaseError {
+                    message: error.to_string(),
+                });
+            }
+        }
 
-    // role == app => delete the app config records
+        user::UserRole::App => {
+            // delete the app config records
+            if let Err(error) = db::config_data::delete_all_app_data(db_conn, username).await {
+                warn!("Fail to delete all the app configs. Database error: {}", error);
+                return Err(ApiError::DatabaseError {
+                    message: error.to_string(),
+                });
+            }
+        }
+    }
 
     // delete the user
     if let Err(error) = db::user::delete_user(db_conn, username).await {
@@ -160,7 +185,29 @@ pub async fn delete_user(db_conn: &DbConnection, username: &str, user_cert_dir: 
     }
 
     // delete the user's cert file
-    
+    if let Err(error) = std::fs::remove_file(&user_cert_path) {
+        warn!("Fail to delete user's cert file. Error: {}", error);
+    }
 
     Ok(())
+}
+
+pub async fn get_user(db_conn: &DbConnection, username: &str, user_cert_file: &PathBuf) -> Result<SeverUserModal, ApiError> {
+    let user = db::user::get_user(db_conn, username).await;
+    match user {
+        Ok(user) => {
+            let user = SeverUserModal::new(username, &user.role, &user_cert_file);
+            match user {
+                Ok(user) => return Ok(user),
+                Err(error) => {
+                    warn!("Fail to parse user. Error: {}", error);
+                    return Err(ApiError::ServerError);
+                },
+            }
+        },
+        Err(error) => {
+            warn!("Fail to get user. Database error: {}", error);
+            return Err(ApiError::DatabaseError { message: error.to_string() });
+        },
+    };
 }

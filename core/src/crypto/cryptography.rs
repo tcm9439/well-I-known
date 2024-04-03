@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use rsa::{pkcs1::{DecodeRsaPrivateKey, EncodeRsaPrivateKey, EncodeRsaPublicKey}, Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
+use rand::{distributions::Alphanumeric, Rng};
+use rsa::{pkcs1::{DecodeRsaPrivateKey, EncodeRsaPrivateKey, EncodeRsaPublicKey}, pkcs8::DecodePublicKey, Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
 use base64::{Engine as _, engine::general_purpose};
 use anyhow::Result;
 
@@ -8,19 +9,58 @@ const RSA_KEY_SIZE: usize = 2048;
 
 // ref: https://docs.rs/rsa/latest/rsa/
 
+/// A public key (cert) for RSA encryption
+#[derive(Clone)]
+pub struct WikRsaPublicKey {
+    pub key: RsaPublicKey,
+}
+
+impl From<RsaPublicKey> for WikRsaPublicKey {
+    fn from(key: RsaPublicKey) -> Self {
+        WikRsaPublicKey { key }
+    }
+}
+
+impl WikRsaPublicKey {
+    pub fn save(&self, pem_file: &PathBuf) -> Result<()> {
+        self.key.write_pkcs1_pem_file(pem_file, rsa::pkcs8::LineEnding::LF)?;
+        Ok(())
+    }
+
+    pub fn from_file(pem_file: &PathBuf) -> Result<Self> {
+        let key = RsaPublicKey::read_public_key_pem_file(pem_file)?;
+        Ok(WikRsaPublicKey { key })
+    }
+
+    /// Generate a random string and encrypt it with the public key.
+    /// Return (plaintext, encrypted_string)
+    pub fn generate_validate_string(&self) -> (String, String) {
+        // generate random string of 30 characters
+        let plaintext: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(30)
+            .map(char::from)
+            .collect();
+    
+        let encrypted = self.encrypt_string(&plaintext).unwrap();
+        
+        (plaintext, encrypted)
+    }
+}
+
 /// A key pair for RSA encryption
 #[derive(Clone)]
-pub struct RsaKeyPair {
-    pub public_key: RsaPublicKey,
+pub struct WikRsaKeyPair {
+    pub public_key: WikRsaPublicKey,
     pub private_key: RsaPrivateKey,
 }
 
-impl RsaKeyPair {
+impl WikRsaKeyPair {
     /// Generate a new key pair
     pub fn new() -> Result<Self> {
         let mut rng = rand::thread_rng();
         let private_key = RsaPrivateKey::new(&mut rng, RSA_KEY_SIZE)?;
-        let public_key = RsaPublicKey::from(&private_key);
+        let public_key = WikRsaPublicKey::from(RsaPublicKey::from(&private_key));
 
         Ok(Self {
             public_key,
@@ -31,7 +71,7 @@ impl RsaKeyPair {
     /// Load a key pair from a private key string
     pub fn from_private_key_str(private_key: &str) -> Result<Self> {
         let private_key = RsaPrivateKey::from_pkcs1_pem(private_key)?;
-        let public_key = RsaPublicKey::from(&private_key);
+        let public_key = WikRsaPublicKey::from(RsaPublicKey::from(&private_key));
         Ok(Self {
             public_key,
             private_key
@@ -41,16 +81,17 @@ impl RsaKeyPair {
     /// Load a key pair from a private key file
     pub fn from_private_key_file(key_file: &Path) -> Result<Self> {
         let private_key = RsaPrivateKey::read_pkcs1_pem_file(key_file)?;
-        let public_key = RsaPublicKey::from(&private_key);
+        let public_key = WikRsaPublicKey::from(RsaPublicKey::from(&private_key));
         Ok(Self {
             public_key,
             private_key
         })
     }
 
-    pub fn save_to_pem_file(&self, directory: &PathBuf, 
+    /// Save the public key and the private to separated pem files.
+    pub fn save(&self, directory: &PathBuf, 
         private_key_filename: &str, public_key_file_name: &str) -> Result<()> {
-        self.public_key.write_pkcs1_pem_file(directory.join(public_key_file_name), rsa::pkcs8::LineEnding::LF)?;
+        self.public_key.save(&directory.join(public_key_file_name))?;
         self.private_key.write_pkcs1_pem_file(directory.join(private_key_filename), rsa::pkcs8::LineEnding::LF)?;
         Ok(())
     }
@@ -65,11 +106,11 @@ pub trait Decryption {
     fn decrypt_string(&self, data: &str) -> Result<String>;
 }
 
-impl Encryption for RsaPublicKey {
+impl Encryption for WikRsaPublicKey {
     fn encrypt_string(&self, data: &str) -> Result<String> {
         let mut rng = rand::thread_rng();
         let data = data.as_bytes();
-        let encrypted_data = self.encrypt(&mut rng, Pkcs1v15Encrypt, &data)?;
+        let encrypted_data = self.key.encrypt(&mut rng, Pkcs1v15Encrypt, &data)?;
         Ok(general_purpose::STANDARD_NO_PAD.encode(encrypted_data))
     }
 }
@@ -82,11 +123,6 @@ impl Decryption for RsaPrivateKey {
     }
 }
 
-pub fn save_public_key_to_pem_file(public_key: &RsaPublicKey, file: &PathBuf) -> Result<()> {
-    public_key.write_pkcs1_pem_file(file, rsa::pkcs8::LineEnding::LF)?;
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -97,7 +133,7 @@ mod tests {
         Path::new(base_dir).join(filename).to_path_buf()
     }
 
-    fn get_example_key_pair() -> RsaKeyPair {
+    fn get_example_key_pair() -> WikRsaKeyPair {
         // indoc => ignore the indentation of the string
         // here, without indoc, the key will not be read correctly
         let pem = indoc! {"
@@ -128,7 +164,7 @@ mod tests {
             GozmRS8Nvxc5Y6/bX+ktoiGbMZxpsf/EazgCzoAybolkBg7boEC+IN4r2/Ps70kZ
             q5fx0NtScwimW9715m040/Qrdfv5LHbKfWWW5IaC9QBJoKLYRebqeA==
             -----END RSA PRIVATE KEY-----"};
-        RsaKeyPair::from_private_key_str(pem).unwrap()
+        WikRsaKeyPair::from_private_key_str(pem).unwrap()
     }
 
     #[test]
@@ -144,7 +180,7 @@ mod tests {
     fn new_key_pair_from_file() {
         let key_file = get_test_path("resources/test/test-private-key.pem");
         println!("{}", key_file.display());
-        let loaded_key_pair = RsaKeyPair::from_private_key_file(&key_file).unwrap();
+        let loaded_key_pair = WikRsaKeyPair::from_private_key_file(&key_file).unwrap();
         let expected_key_pair = get_example_key_pair();
         assert_eq!(expected_key_pair.private_key, loaded_key_pair.private_key);
     }
@@ -155,8 +191,8 @@ mod tests {
         let temp_dir = get_test_path("output/test/");
         let private_key_filename = "private-key.pem";
         let public_key_filename = "public-key.pem";
-        key_pair.save_to_pem_file(&temp_dir, private_key_filename, public_key_filename).unwrap();
-        let loaded_key_pair = RsaKeyPair::from_private_key_file(&temp_dir.join(private_key_filename)).unwrap();
+        key_pair.save(&temp_dir, private_key_filename, public_key_filename).unwrap();
+        let loaded_key_pair = WikRsaKeyPair::from_private_key_file(&temp_dir.join(private_key_filename)).unwrap();
         assert_eq!(key_pair.private_key, loaded_key_pair.private_key);
     }
 }

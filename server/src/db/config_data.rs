@@ -142,6 +142,32 @@ pub async fn delete_data(db_conn: &DbConnection, app_name: &str, owner: &str, ke
     Ok(())
 }
 
+pub async fn delete_all_app_data(db_conn: &DbConnection, app_name: &str) -> Result<()> {
+    let sql = Query::delete()
+        .from_table(ConfigDataIden::Table)
+        .cond_where(Expr::col(ConfigDataIden::AppName).eq(app_name))
+        .to_string(SqliteQueryBuilder);
+
+    sqlx::query(sql.as_str())
+        .execute(&db_conn.pool)
+        .await?;
+
+    Ok(())
+}
+
+pub async fn delete_all_data_for_owner(db_conn: &DbConnection, owner: &str) -> Result<()> {
+    let sql = Query::delete()
+        .from_table(ConfigDataIden::Table)
+        .cond_where(Expr::col(ConfigDataIden::Owner).eq(owner))
+        .to_string(SqliteQueryBuilder);
+
+    sqlx::query(sql.as_str())
+        .execute(&db_conn.pool)
+        .await?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -222,6 +248,46 @@ mod tests {
         delete_data(&db_conn, "u_app", "u_root", "test_key").await.unwrap();
 
         let exists = check_data_exists(&db_conn, "u_app", "u_root", "test_key").await.unwrap();
+        assert_eq!(exists, false);
+    }
+
+    #[tokio::test]
+    async fn test_delete_all_app_data(){
+        let db_conn = create_test_db("test_delete_all_app_data").await;
+
+        set_data_value(&db_conn, "u_app", "u_root", "test_key", "test_value").await.unwrap();
+        set_data_value(&db_conn, "u_app", "u_root", "test_key2", "test_value2").await.unwrap();
+
+        let exists = check_data_exists(&db_conn, "u_app", "u_root", "test_key").await.unwrap();
+        assert_eq!(exists, true);
+        let exists = check_data_exists(&db_conn, "u_app", "u_root", "test_key2").await.unwrap();
+        assert_eq!(exists, true);
+
+        delete_all_app_data(&db_conn, "u_app").await.unwrap();
+
+        let exists = check_data_exists(&db_conn, "u_app", "u_root", "test_key").await.unwrap();
+        assert_eq!(exists, false);
+        let exists = check_data_exists(&db_conn, "u_app", "u_root", "test_key2").await.unwrap();
+        assert_eq!(exists, false);
+    }
+
+    #[tokio::test]
+    async fn test_delete_all_data_for_owner(){
+        let db_conn = create_test_db("test_delete_all_data_for_owner").await;
+
+        set_data_value(&db_conn, "u_app", "u_root", "test_key", "test_value").await.unwrap();
+        set_data_value(&db_conn, "u_app", "u_root", "test_key2", "test_value2").await.unwrap();
+
+        let exists = check_data_exists(&db_conn, "u_app", "u_root", "test_key").await.unwrap();
+        assert_eq!(exists, true);
+        let exists = check_data_exists(&db_conn, "u_app", "u_root", "test_key2").await.unwrap();
+        assert_eq!(exists, true);
+
+        delete_all_data_for_owner(&db_conn, "u_root").await.unwrap();
+
+        let exists = check_data_exists(&db_conn, "u_app", "u_root", "test_key").await.unwrap();
+        assert_eq!(exists, false);
+        let exists = check_data_exists(&db_conn, "u_app", "u_root", "test_key2").await.unwrap();
         assert_eq!(exists, false);
     }
 }

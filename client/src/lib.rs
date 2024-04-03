@@ -1,11 +1,11 @@
-use well_i_known_core::crypto::cryptography::{Encryption, Decryption, RsaKeyPair};
+use well_i_known_core::crypto::cryptography::{Encryption, Decryption, WikRsaKeyPair};
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
 
 pub fn read_key(){
-    let key = RsaKeyPair::new().unwrap();
+    let key = WikRsaKeyPair::new().unwrap();
     key.private_key.decrypt_string("hello").unwrap();
 }
 
