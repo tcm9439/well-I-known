@@ -125,26 +125,6 @@ impl Default for WIKServerTlsConfig {
     }
 }
 
-/// Log files & levels config.
-#[derive(Deserialize, Serialize, Clone)]
-pub struct WIKServerLoggerConfig {
-    log_dir: String,
-    log_file: String,
-    level: String,
-    rotate_interval: String,
-}
-
-impl Default for WIKServerLoggerConfig {
-    fn default() -> Self {
-        WIKServerLoggerConfig {
-            log_dir: "./logs".to_string(),
-            log_file: "wellik_server.log".to_string(),
-            level: "info".to_string(),
-            rotate_interval: "day".to_string(),
-        }
-    }
-}
-
 // ====== Json Config Constructor / Getter ======
 
 impl WIKServerConfig {
@@ -175,6 +155,26 @@ impl WIKServerTlsConfig {
             ).await
             .unwrap()
         // unwrap as failing to get this config is FATAL
+    }
+}
+
+/// Log files & levels config.
+#[derive(Deserialize, Serialize, Clone)]
+pub struct WIKServerLoggerConfig {
+    log_dir: String,
+    log_file: String,
+    level: String,
+    rotate_interval: String,
+}
+
+impl Default for WIKServerLoggerConfig {
+    fn default() -> Self {
+        WIKServerLoggerConfig {
+            log_dir: "./logs".to_string(),
+            log_file: "wellik_server.log".to_string(),
+            level: "info".to_string(),
+            rotate_interval: "day".to_string(),
+        }
     }
 }
 

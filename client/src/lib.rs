@@ -1,4 +1,4 @@
-use well_i_known_core::crypto::cryptography::{Encryption, Decryption, WikRsaKeyPair};
+use well_i_known_core::crypto::cryptography::{Decryption, WikRsaKeyPair};
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right

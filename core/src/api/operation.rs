@@ -1,7 +1,7 @@
 use strum_macros::{Display, EnumString};
 
 #[derive(Debug, PartialEq, EnumString, Display)]
-enum ApiOperation {
+pub enum ApiOperation {
     #[strum(ascii_case_insensitive)]
     Create,
     #[strum(ascii_case_insensitive)]

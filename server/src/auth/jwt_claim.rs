@@ -12,7 +12,7 @@ use super::jwt_key::JwtKeys;
 pub struct JwtClaims {
     pub sub: String,        // Subject (whom the token refers to)
     pub exp: usize,         // Expiration time (as UTC timestamp)
-    role: String,       // User role
+    pub role: String,       // User role
 }
 
 impl Display for JwtClaims {

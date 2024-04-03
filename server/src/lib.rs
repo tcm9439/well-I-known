@@ -71,7 +71,8 @@ async fn start_server(server_config: &WIKServerEnvironmentConfig) -> Result<()> 
         .route("/users/validate", post(validate_user_handler))
         .route("/users", post(alter_user_handler))
         .route("/users", delete(delete_user_handler))
-        .route("/admin/access", post(admin_access_handler))
+        .route("/admin/access", post(create_admin_access_handler))
+        .route("/admin/access", delete(delete_admin_access_handler))
         .with_state(server_state.into());
     
     info!("Server started at: {}", server_config.config.get_server_ip());

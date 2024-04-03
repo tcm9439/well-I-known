@@ -19,6 +19,7 @@ pub async fn check_user_exists(db_conn: &DbConnection, username: &str) -> Result
     }
 }
 
+// TODO move this to role_validation.rs
 fn valid_to_create_role_by_role(creator: &UserRole, target_role: &UserRole) -> bool {
     match creator {
         UserRole::Root => true,
@@ -203,6 +204,24 @@ pub async fn get_user(db_conn: &DbConnection, username: &str, user_cert_file: &P
                     warn!("Fail to parse user. Error: {}", error);
                     return Err(ApiError::ServerError);
                 },
+            }
+        },
+        Err(error) => {
+            warn!("Fail to get user. Database error: {}", error);
+            return Err(ApiError::DatabaseError { message: error.to_string() });
+        },
+    };
+}
+
+// TODO see if this can be optimized
+pub async fn is_valid_user_of_role(db_conn: &DbConnection, username: &str, role: &UserRole) -> Result<bool, ApiError> {
+    let user = db::user::get_user(db_conn, username).await;
+    match user {
+        Ok(user) => {
+            if user.role == role.to_string() {
+                return Ok(true);
+            } else {
+                return Ok(false);
             }
         },
         Err(error) => {

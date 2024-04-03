@@ -23,8 +23,8 @@ pub struct AuthBody {
 /// Payload sent by the user to authorize
 #[derive(Deserialize)]
 pub struct AuthPayload {
-    username: String,
-    password: String,
+    pub username: String,
+    pub password: String,
 }
 
 impl Debug for AuthPayload {
