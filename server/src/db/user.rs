@@ -210,7 +210,6 @@ mod tests {
         let user = get_user(&db_conn, "test_user").await.unwrap();
         assert_eq!(user.username, "test_user");
         assert_eq!(user.role, "root");
-        delete_test_db("test_create_and_get_user").await;
     }
 
     #[tokio::test]
@@ -227,7 +226,6 @@ mod tests {
         assert_eq!(exists, true);
         let exists = check_root_exists(&db_conn).await.unwrap();
         assert_eq!(exists, true);
-        delete_test_db("test_user_exists").await;
     }
 
     #[tokio::test]
@@ -240,7 +238,6 @@ mod tests {
 
         let (valid, _) = auth_user(&db_conn, "test_user", "wrong_password").await.unwrap();
         assert_eq!(valid, false);
-        delete_test_db("test_auth_user").await;
     }
 
     #[tokio::test]
@@ -250,6 +247,5 @@ mod tests {
         let _ = update_user(&db_conn, "test_user", "new_password").await.unwrap();
         let user = get_user(&db_conn, "test_user").await.unwrap();
         assert_eq!(password::verify_password("new_password", &user.encrypted_password, &user.password_salt), true);
-        delete_test_db("test_update_user").await;
     }
 }

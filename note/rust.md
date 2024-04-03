@@ -4,6 +4,10 @@
 `cargo run --bin binary-name`
 - run the binary in dev mode
 
+### test
+Test specific mod:
+`cargo test --package well-i-known-server -- db::access_right::tests --nocapture`
+
 ### build
 `cargo build`
 - build in dev profile (debug mode)

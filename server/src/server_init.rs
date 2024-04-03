@@ -113,6 +113,6 @@ mod tests {
         let db_conn = db_connection::create_connection_pool(&db_path).await.unwrap();
         let db_conn = DbConnection { pool: db_conn };
         create_tables(&db_conn).await;
-        std::fs::remove_dir(&test_dir).unwrap();
+        std::fs::remove_file(&db_path).unwrap();
     }
 }
