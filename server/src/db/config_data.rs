@@ -171,44 +171,22 @@ pub async fn delete_all_data_for_owner(db_conn: &DbConnection, owner: &str) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::{Path, PathBuf};
-    use std::fs;
     use crate::db::user;
-    use crate::db::db_connection;
+    use crate::db::db_test_util::*;
 
-    fn get_test_path(filename: &str) -> PathBuf {
-        let base_dir = env!("CARGO_MANIFEST_DIR");
-        Path::new(base_dir).join(filename).to_path_buf()
-    }
-    
-    /// Create a new database for the test case by copying the base database
-    async fn create_test_db(test_case_name: &str) -> DbConnection{
-        let test_case_db_path = get_test_path(format!("output/{}.db", test_case_name).as_str());
-        let test_base_path = get_test_path("resources/test/base-test.db");
-        delete_test_db(test_case_name).await;
-        fs::copy(&test_base_path, &test_case_db_path).unwrap();
-
+    async fn create_config_data_test_db(test_case_name: &str) -> DbConnection{
         // create the connection
-        let db_conn = db_connection::create_connection_pool(&test_case_db_path).await.unwrap();
-        let db_conn = DbConnection { pool: db_conn };
+        let db_conn = create_test_db(test_case_name).await;
+        // insert base data
         user::create_user(&db_conn, "u_root", "root", "password").await.unwrap();
         user::create_user(&db_conn, "u_admin", "admin", "password").await.unwrap();
         user::create_user(&db_conn, "u_app", "app", "password").await.unwrap();
-
         db_conn
-    }
-
-    async fn delete_test_db(test_case_name: &str) {
-        let db_path = get_test_path(format!("output/{}.db", test_case_name).as_str());
-        // delete the file if it exists
-        if db_path.exists() {
-            fs::remove_file(&db_path).unwrap();
-        }
     }
 
     #[tokio::test]
     async fn test_add_and_get_data(){
-        let db_conn = create_test_db("test_add_and_get_data").await;
+        let db_conn = create_config_data_test_db("test_add_and_get_data").await;
 
         let exists = check_data_exists(&db_conn, "u_app", "u_root", "test_key").await.unwrap();
         assert_eq!(exists, false);
@@ -223,7 +201,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_data(){
-        let db_conn = create_test_db("test_update_data").await;
+        let db_conn = create_config_data_test_db("test_update_data").await;
 
         set_data_value(&db_conn, "u_app", "u_root", "test_key", "test_value").await.unwrap();
 
@@ -238,7 +216,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_data(){
-        let db_conn = create_test_db("test_delete_data").await;
+        let db_conn = create_config_data_test_db("test_delete_data").await;
 
         set_data_value(&db_conn, "u_app", "u_root", "test_key", "test_value").await.unwrap();
 
@@ -253,7 +231,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_all_app_data(){
-        let db_conn = create_test_db("test_delete_all_app_data").await;
+        let db_conn = create_config_data_test_db("test_delete_all_app_data").await;
 
         set_data_value(&db_conn, "u_app", "u_root", "test_key", "test_value").await.unwrap();
         set_data_value(&db_conn, "u_app", "u_root", "test_key2", "test_value2").await.unwrap();
@@ -273,7 +251,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_all_data_for_owner(){
-        let db_conn = create_test_db("test_delete_all_data_for_owner").await;
+        let db_conn = create_config_data_test_db("test_delete_all_data_for_owner").await;
 
         set_data_value(&db_conn, "u_app", "u_root", "test_key", "test_value").await.unwrap();
         set_data_value(&db_conn, "u_app", "u_root", "test_key2", "test_value2").await.unwrap();

@@ -174,34 +174,7 @@ pub async fn auth_user(db_conn: &DbConnection, username: &str, password: &str) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::{Path, PathBuf};
-    use std::fs;
-    use crate::db::db_connection;
-
-    fn get_test_path(filename: &str) -> PathBuf {
-        let base_dir = env!("CARGO_MANIFEST_DIR");
-        Path::new(base_dir).join(filename).to_path_buf()
-    }
-    
-    /// Create a new database for the test case by copying the base database
-    async fn create_test_db(test_case_name: &str) -> DbConnection{
-        let test_case_db_path = get_test_path(format!("output/{}.db", test_case_name).as_str());
-        let test_base_path = get_test_path("resources/test/base-test.db");
-        delete_test_db(test_case_name).await;
-        fs::copy(&test_base_path, &test_case_db_path).unwrap();
-    
-        // create the connection
-        let db_conn = db_connection::create_connection_pool(&test_case_db_path).await.unwrap();
-        DbConnection { pool: db_conn }
-    }
-
-    async fn delete_test_db(test_case_name: &str) {
-        let db_path = get_test_path(format!("output/{}.db", test_case_name).as_str());
-        // delete the file if it exists
-        if db_path.exists() {
-            fs::remove_file(&db_path).unwrap();
-        }
-    }
+    use crate::db::db_test_util::*;
 
     #[tokio::test]
     async fn test_create_and_get_user() {

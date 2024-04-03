@@ -157,7 +157,7 @@ pub async fn validate_user_handler(
 #[cfg(test)]
 mod tests {
     #[tokio::test]
-    fn test_alter_user_handler() {
+    async fn test_alter_user_handler() {
         // TODO
     }
 }
