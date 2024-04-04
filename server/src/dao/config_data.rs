@@ -9,10 +9,10 @@ use crate::dao::user::UserIden;
 #[enum_def]
 #[derive(Clone, FromRow, Debug)]
 pub struct ConfigData {
-    app_name: String,
-    key: String,
-    owner: String,
-    value: String,
+    pub app_name: String,
+    pub key: String,
+    pub owner: String,
+    pub value: String,
 }
 
 const CONFIG_DATA_COLUMNS: [ConfigDataIden; 4] = [
@@ -59,7 +59,7 @@ impl DbTable for ConfigDataTable {
 }
 
 /// Get the encrypted value of the given key for the given owner.
-pub async fn get_data_value(db_conn: &DbConnection, app_name: &str, owner: &str, key: &str) -> Result<String> {
+pub async fn get_data_value(db_conn: &DbConnection, app_name: &str, owner: &str, key: &str) -> Result<Option<String>> {
     let sql = Query::select()
         .column(ConfigDataIden::Value)
         .from(ConfigDataIden::Table)
@@ -68,13 +68,14 @@ pub async fn get_data_value(db_conn: &DbConnection, app_name: &str, owner: &str,
         .and_where(Expr::col(ConfigDataIden::Owner).eq(owner))
         .to_string(SqliteQueryBuilder);
 
-    let data: (String, ) = sqlx::query_as(sql.as_str())
-        .fetch_one(&db_conn.pool)
+    let data: Option<(String, )> = sqlx::query_as(sql.as_str())
+        .fetch_optional(&db_conn.pool)
         .await?;
 
-    Ok(data.0)
+    Ok(data.map(|(value, )| value))
 }
 
+/// Check if the records exists for the given 'app, key, owner' pair.
 pub async fn check_data_exists(db_conn: &DbConnection, app_name: &str, owner: &str, key: &str) -> Result<bool> {
     let sql = Query::select()
         .expr(Expr::col(ConfigDataIden::Key).count())
@@ -91,6 +92,23 @@ pub async fn check_data_exists(db_conn: &DbConnection, app_name: &str, owner: &s
     Ok(count.0 == 1)
 }
 
+/// Check if the records exists for the given 'app, key, owner' pair.
+pub async fn check_data_exists_for_key(db_conn: &DbConnection, app_name: &str, key: &str) -> Result<bool> {
+    let sql = Query::select()
+        .expr(Expr::col(ConfigDataIden::Key).count())
+        .from(ConfigDataIden::Table)
+        .and_where(Expr::col(ConfigDataIden::AppName).eq(app_name))
+        .and_where(Expr::col(ConfigDataIden::Key).eq(key))
+        .to_string(SqliteQueryBuilder);
+
+    let count: (i32, ) = sqlx::query_as(sql.as_str())
+        .fetch_one(&db_conn.pool)
+        .await?;
+
+    Ok(count.0 > 0)
+}
+
+/// Set the data value for the given 'app, key, owner' pair.
 pub async fn set_data_value(db_conn: &DbConnection, app_name: &str, owner: &str, key: &str, value: &str) -> Result<()> {
     let sql = Query::insert()
         .into_table(ConfigDataIden::Table)
@@ -110,6 +128,7 @@ pub async fn set_data_value(db_conn: &DbConnection, app_name: &str, owner: &str,
     Ok(())
 }
 
+/// Update the data value for the given 'app, key, owner' pair.
 pub async fn update_data_value(db_conn: &DbConnection, app_name: &str, owner: &str, key: &str, value: &str) -> Result<()> {
     let sql = Query::update()
         .table(ConfigDataIden::Table)
@@ -128,6 +147,7 @@ pub async fn update_data_value(db_conn: &DbConnection, app_name: &str, owner: &s
     Ok(())
 }
 
+/// Delete the data for the given 'app, key, owner' pair.
 pub async fn delete_data(db_conn: &DbConnection, app_name: &str, owner: &str, key: &str) -> Result<()> {
     let sql = Query::delete()
         .from_table(ConfigDataIden::Table)
@@ -143,6 +163,24 @@ pub async fn delete_data(db_conn: &DbConnection, app_name: &str, owner: &str, ke
     Ok(())
 }
 
+/// Delete all data for the given 'app, key' pair.
+/// Useful when deleting a key for an.
+pub async fn delete_all_app_key_data(db_conn: &DbConnection, app_name: &str, key: &str) -> Result<()> {
+    let sql = Query::delete()
+        .from_table(ConfigDataIden::Table)
+        .cond_where(Expr::col(ConfigDataIden::AppName).eq(app_name))
+        .cond_where(Expr::col(ConfigDataIden::Key).eq(key))
+        .to_string(SqliteQueryBuilder);
+
+    sqlx::query(sql.as_str())
+        .execute(&db_conn.pool)
+        .await?;
+
+    Ok(())
+}
+
+/// Delete all data for the given 'app'.
+/// Useful when deleting an app.
 pub async fn delete_all_app_data(db_conn: &DbConnection, app_name: &str) -> Result<()> {
     let sql = Query::delete()
         .from_table(ConfigDataIden::Table)
@@ -156,6 +194,8 @@ pub async fn delete_all_app_data(db_conn: &DbConnection, app_name: &str) -> Resu
     Ok(())
 }
 
+/// Delete all data for the given 'owner'.
+/// Useful when deleting a user.
 pub async fn delete_all_data_for_owner(db_conn: &DbConnection, owner: &str) -> Result<()> {
     let sql = Query::delete()
         .from_table(ConfigDataIden::Table)
@@ -171,6 +211,8 @@ pub async fn delete_all_data_for_owner(db_conn: &DbConnection, owner: &str) -> R
 
 #[cfg(test)]
 mod tests {
+    use well_i_known_core::modal::user::UserRole;
+
     use super::*;
     use crate::dao::user;
     use crate::db::db_test_util::*;
@@ -179,9 +221,9 @@ mod tests {
         // create the connection
         let db_conn = create_test_db(test_case_name).await;
         // insert base data
-        user::create_user(&db_conn, "u_root", "root", "password").await.unwrap();
-        user::create_user(&db_conn, "u_admin", "admin", "password").await.unwrap();
-        user::create_user(&db_conn, "u_app", "app", "password").await.unwrap();
+        user::create_user(&db_conn, "u_root", &UserRole::Root, "password").await.unwrap();
+        user::create_user(&db_conn, "u_admin", &UserRole::Admin, "password").await.unwrap();
+        user::create_user(&db_conn, "u_app", &UserRole::App, "password").await.unwrap();
         db_conn
     }
 
@@ -197,7 +239,7 @@ mod tests {
         let exists = check_data_exists(&db_conn, "u_app", "u_root", "test_key").await.unwrap();
         assert_eq!(exists, true);
         let value = get_data_value(&db_conn, "u_app", "u_root", "test_key").await.unwrap();
-        assert_eq!(value, "test_value");
+        assert_eq!(value, Some("test_value".to_string()));
     }
 
     #[tokio::test]
@@ -206,12 +248,12 @@ mod tests {
 
         set_data_value(&db_conn, "u_app", "u_root", "test_key", "test_value").await.unwrap();
 
-        let value = get_data_value(&db_conn, "u_app", "u_root", "test_key").await.unwrap();
+        let value = get_data_value(&db_conn, "u_app", "u_root", "test_key").await.unwrap().unwrap();
         assert_eq!(value, "test_value");
 
         update_data_value(&db_conn, "u_app", "u_root", "test_key", "new_value").await.unwrap();
 
-        let value = get_data_value(&db_conn, "u_app", "u_root", "test_key").await.unwrap();
+        let value = get_data_value(&db_conn, "u_app", "u_root", "test_key").await.unwrap().unwrap();
         assert_eq!(value, "new_value");
     }
 

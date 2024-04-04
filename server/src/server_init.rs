@@ -1,4 +1,5 @@
 use crate::dao::{access_right::AccessRightTable, config_data::ConfigDataTable, user::UserTable};
+use crate::repository;
 use crate::db::db_base::DbTable;
 use crate::db::db_connection::{self, DbConnection};
 use crate::config::server_config::{self, WIKServerEnvironmentConfig};
@@ -17,7 +18,7 @@ pub fn create_dir_if_not_exists(path: &PathBuf){
     }
 }
 
-pub fn init_server_directory(config: &mut WIKServerEnvironmentConfig){
+pub fn init_server_directory(config: &WIKServerEnvironmentConfig){
     debug!("Initializing server directory...");
 
     trace!("Creating server directory...");
@@ -42,7 +43,6 @@ pub fn init_server_directory(config: &mut WIKServerEnvironmentConfig){
         server_config::ROOT_KEY_PEM_FILENAME, 
         server_config::ROOT_CERT_PEM_FILENAME)
         .expect("Fail to save root key pair.");
-    config.root_key = Some(root_key_pair);
 
     debug!("Server directory initialized.");
 }
@@ -55,6 +55,10 @@ pub async fn create_tables(db_conn: &DbConnection) {
     AccessRightTable::create_table(db_conn).await;
     ConfigDataTable::create_table(db_conn).await;
     info!("Tables created.");
+}
+
+pub async fn create_root_user(db_conn: &DbConnection, username: &str, password: &str) {
+    repository::user::create_root_user(db_conn, username, password).await.expect("Fail to create root user.");
 }
 
 /// Write the server pid to the pid file.

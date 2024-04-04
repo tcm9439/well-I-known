@@ -12,7 +12,7 @@ use axum::extract::State;
 use axum::Json;
 use tracing::*;
 
-
+/// Authorization for the requester calling the admin access right API.
 async fn basic_auth_for_admin_api(server_state: &Arc<ServerState>, claims: &JwtClaims, payload: &AdminAccessParam) -> Result<(), ApiError> {
     // check if user is admin
     let authorized = is_admin(&claims.role);

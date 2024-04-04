@@ -11,7 +11,7 @@ pub struct GetDataQuery {
 pub struct UpdateDataParam {
     pub app: String,
     pub key: String,
-    pub value: String,
+    pub value: String,      // plaintext
 }
 
 #[derive(Deserialize, Debug)]

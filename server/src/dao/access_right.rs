@@ -144,14 +144,15 @@ pub async fn check_access_right_exists(db_conn: &DbConnection, username: &str, a
 #[cfg(test)]
 mod tests {
     use super::*;
+    use well_i_known_core::modal::user::UserRole;
     use crate::db::db_test_util::create_test_db;
     use crate::dao::user;
     
     async fn create_access_right_test_db(test_case_name: &str) -> DbConnection{
         let db_conn = create_test_db(test_case_name).await;
-        user::create_user(&db_conn, "u_root", "root", "password").await.unwrap();
-        user::create_user(&db_conn, "u_admin", "admin", "password").await.unwrap();
-        user::create_user(&db_conn, "u_app", "app", "password").await.unwrap();
+        user::create_user(&db_conn, "u_root", &UserRole::Root, "password").await.unwrap();
+        user::create_user(&db_conn, "u_admin", &UserRole::Admin, "password").await.unwrap();
+        user::create_user(&db_conn, "u_app", &UserRole::App, "password").await.unwrap();
         db_conn
     }
 

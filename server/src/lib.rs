@@ -6,7 +6,7 @@ mod dao;
 mod error;
 mod repository;
 mod server_state;
-mod server_init;
+pub mod server_init;
 
 use auth::jwt_controller::authorize_handler;
 use db::db_connection::DbConnection;
@@ -22,10 +22,9 @@ use tracing::*;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::fmt;
 use tracing_subscriber::layer::SubscriberExt;
-use std::path::Path;
 
 /// Init tracing by the loaded logging config.
-fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
+pub fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
     // TODO change timestamp to local time instead of UTC
     
     // register tracing file appender
@@ -48,13 +47,15 @@ fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
 /// Start the server with the loaded server config.
 /// server_base_dir: The base directory of the server data.
 /// server_config: The server config.
-async fn start_server(server_config: &WIKServerEnvironmentConfig) -> Result<()> {
+pub async fn start_server(server_config: &WIKServerEnvironmentConfig) -> Result<()> {
     debug!("Starting server...");
     debug!("Init TLS...");
     let tls_config = server_config.config.tls.get_rustls_config().await;
     debug!("Init database connection...");
     let db_path = server_config.to_full_path(&server_config.config.db_path);
     let db_conn = DbConnection::new(&db_path).await?;
+
+    // TODO load root user from the database & save it to the server state
 
     let server_state = ServerState {
         db_conn,

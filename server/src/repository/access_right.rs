@@ -44,16 +44,17 @@ pub async fn delete_access_right(db_conn: &DbConnection, username: &str, app_nam
 #[cfg(test)]
 mod tests {
     use super::*;
+    use well_i_known_core::modal::user::UserRole;
     use crate::db::db_test_util::*;
-    use crate::dao;
+    use crate::dao::user;
 
     async fn create_access_right_test_db(test_case_name: &str) -> DbConnection{
         // create the connection
         let db_conn = create_test_db(test_case_name).await;
         // insert base data
-        dao::user::create_user(&db_conn, "u_root", "root", "password").await.unwrap();
-        dao::user::create_user(&db_conn, "u_admin", "admin", "password").await.unwrap();
-        dao::user::create_user(&db_conn, "u_app", "app", "password").await.unwrap();
+        user::create_user(&db_conn, "u_root", &UserRole::Root, "password").await.unwrap();
+        user::create_user(&db_conn, "u_admin", &UserRole::Admin, "password").await.unwrap();
+        user::create_user(&db_conn, "u_app", &UserRole::App, "password").await.unwrap();
         db_conn
     }
 

@@ -1,4 +1,4 @@
-use well_i_known_core::crypto::cryptography::WikRsaKeyPair;
+use well_i_known_core::modal::user::UserKeyModal;
 
 use tracing::Level;
 use tracing_appender::rolling::RollingFileAppender;
@@ -18,7 +18,7 @@ pub const ROOT_CERT_PEM_FILENAME: &str = "wellik-root-cert.pem";
 pub struct WIKServerEnvironmentConfig {
     pub base_dir: PathBuf,          // base directory of the server
     pub config: WIKServerConfig,    // server config
-    pub root_key: Option<WikRsaKeyPair>,
+    pub root_user: Option<UserKeyModal>,
 }
 
 impl WIKServerEnvironmentConfig {

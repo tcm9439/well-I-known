@@ -70,15 +70,11 @@ pub async fn alter_user_handler(
         }
 
         if role.as_ref().unwrap() == &UserRole::Root {
-            info!("Creating root user...");
-            repository::user::create_root_user(
-                &server_state.db_conn,
-                &claims.sub,
-                &claims.get_role(),
-                &payload.username,
-                &role.unwrap(),
-                &payload.password
-            ).await?;
+            warn!("Root user cannot be created using this endpoint.");
+            return Err(ApiError::InvalidArgument {
+                argument: "role".to_string(),
+                message: "Root user cannot be created using this endpoint.".to_string(),
+            })
         } else {
             if payload.public_key.is_none() {
                 warn!("User's public key is required when creating non-root user.");
