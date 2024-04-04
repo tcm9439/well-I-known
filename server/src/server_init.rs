@@ -47,7 +47,7 @@ pub fn init_server_directory(config: &WIKServerEnvironmentConfig){
     debug!("Server directory initialized.");
 }
 
-pub async fn create_tables(db_conn: &DbConnection) {
+pub async fn init_server_database(db_conn: &DbConnection) {
     info!("Enabling sqlite foreign key support...");
     db_connection::enable_sqlite_foreign_key_support(db_conn).await.expect("Fail to enable sqlite foreign key support.");
     info!("Creating database tables...");
@@ -57,7 +57,7 @@ pub async fn create_tables(db_conn: &DbConnection) {
     info!("Tables created.");
 }
 
-pub async fn create_root_user(db_conn: &DbConnection, username: &str, password: &str) {
+pub async fn init_root_user(db_conn: &DbConnection, username: &str, password: &str) {
     repository::user::create_root_user(db_conn, username, password).await.expect("Fail to create root user.");
 }
 
@@ -97,18 +97,9 @@ mod tests {
         assert!(test_dir.exists());
         std::fs::remove_dir(&test_dir).unwrap();
     }
-
-    // #[tokio::test]
-    // async fn test_init_server_dir() {
-    //     let test_dir = get_test_path("output/server_init");
-    //     create_dir_if_not_exists(&test_dir);
-
-    //     // TODO
-    //     std::fs::remove_dir(&test_dir).unwrap();
-    // }
-
+    
     #[tokio::test]
-    async fn test_create_tables(){
+    async fn test_init_server_database(){
         let test_dir = get_test_path("output/db_init");
         create_dir_if_not_exists(&test_dir);
 
@@ -116,7 +107,7 @@ mod tests {
         db_connection::create_database(&db_path).expect("Fail to create database.");
         let db_conn = db_connection::create_connection_pool(&db_path).await.unwrap();
         let db_conn = DbConnection { pool: db_conn };
-        create_tables(&db_conn).await;
+        init_server_database(&db_conn).await;
         std::fs::remove_file(&db_path).unwrap();
     }
 }

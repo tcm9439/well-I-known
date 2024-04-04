@@ -26,7 +26,16 @@ pub struct UserModal {
 #[derive(Clone)]
 pub struct UserKeyModal {
     pub username: String,
-    pub public_key: WikRsaPublicKey,
+    pub key: WikRsaKeyPair,
+}
+
+impl UserKeyModal {
+    pub fn new(username: &str, private_key_path: &PathBuf) -> Result<Self> {
+        Ok(UserKeyModal {
+            username: username.to_string(),
+            key: WikRsaKeyPair::from_private_key_file(private_key_path)?,
+        })
+    }
 }
 
 /// User modal at the server side. 

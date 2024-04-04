@@ -1,4 +1,5 @@
 use well_i_known_core::modal::user::UserKeyModal;
+use crate::db::db_connection::DbConnection;
 
 use tracing::Level;
 use tracing_appender::rolling::RollingFileAppender;
@@ -7,6 +8,7 @@ use figment::{Figment, providers::{Format, Json, Serialized}};
 use axum_server::tls_rustls::RustlsConfig;
 use std::path::PathBuf;
 use std::net::SocketAddr;
+use anyhow::Result;
 
 // set a const string for environment variable name
 const WIK_SERVER_HOME_ENV_VAR_NAME: &str = "WELLIK_HOME";
@@ -24,6 +26,11 @@ pub struct WIKServerEnvironmentConfig {
 impl WIKServerEnvironmentConfig {
     pub fn to_full_path(&self, relative_path: &str) -> PathBuf {
         self.base_dir.join(relative_path)
+    }
+
+    pub async fn get_db_conn(&self) -> Result<DbConnection> {
+        let db_path = self.to_full_path(&self.config.db_path);
+        DbConnection::new(&db_path).await
     }
 
     pub fn get_base_dir_from_env() -> Option<PathBuf> {

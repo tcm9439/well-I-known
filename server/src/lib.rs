@@ -1,5 +1,5 @@
 mod auth;
-mod config;
+pub mod config;
 mod controller;
 mod db;
 mod dao;
@@ -9,7 +9,6 @@ mod server_state;
 pub mod server_init;
 
 use auth::jwt_controller::authorize_handler;
-use db::db_connection::DbConnection;
 use controller::user::*;
 use controller::admin::*;
 use controller::data::*;
@@ -21,19 +20,25 @@ use anyhow::Result;
 use tracing::*;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::fmt;
+use tracing_subscriber::fmt::time::ChronoLocal;
 use tracing_subscriber::layer::SubscriberExt;
 
 /// Init tracing by the loaded logging config.
 pub fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
-    // TODO change timestamp to local time instead of UTC
-    
     // register tracing file appender
-    // _guard is needed to be in / returned to main()
-    let (non_blocking_trace_file_appender, guard) = tracing_appender::non_blocking(server_config.logging.get_logging_file_appender());
+    let (non_blocking_trace_file_appender, guard) = tracing_appender::non_blocking(
+        server_config.logging.get_logging_file_appender());
+
+    // change timestamp to local time instead of UTC
+    // tracing-subscriber = { version = "0.3.18", features = ["env-filter", "chrono"] }
+    //                                                                       ^^^^^^
+    // let timer = ChronoLocal::rfc_3339();
+    let timer = ChronoLocal::new("%Y-%m-%d %H:%M:%S%.3f".to_string());
 
     // logging to stdout seems to be enabled by default for fmt::Subscriber
     let subscriber = fmt::Subscriber::builder()
         .with_max_level(server_config.logging.get_logging_level())
+        .with_timer(timer)
         .finish()
         .with(fmt::Layer::default()
             .with_ansi(false)
@@ -41,21 +46,23 @@ pub fn init_tracing(server_config: &WIKServerConfig) -> WorkerGuard {
 
     tracing::subscriber::set_global_default(subscriber).expect("Unable to set global subscriber.");
 
+    // guard is needed to be in / returned to main()
     guard
 }
 
 /// Start the server with the loaded server config.
 /// server_base_dir: The base directory of the server data.
 /// server_config: The server config.
-pub async fn start_server(server_config: &WIKServerEnvironmentConfig) -> Result<()> {
+pub async fn start_server(server_config: &mut WIKServerEnvironmentConfig) -> Result<()> {
     debug!("Starting server...");
     debug!("Init TLS...");
     let tls_config = server_config.config.tls.get_rustls_config().await;
     debug!("Init database connection...");
-    let db_path = server_config.to_full_path(&server_config.config.db_path);
-    let db_conn = DbConnection::new(&db_path).await?;
+    let db_conn = server_config.get_db_conn().await?;
 
-    // TODO load root user from the database & save it to the server state
+    let root_user = repository::user::get_root_user(&db_conn, server_config).await
+        .expect("Fail to get root user.");
+    server_config.root_user = Some(root_user);
 
     let server_state = ServerState {
         db_conn,

@@ -1,6 +1,6 @@
-use well_i_known_core::modal::user::{self, ServerUserKeyModal, SeverUserModal, UserRole};
+use well_i_known_core::modal::user::{self, UserKeyModal, ServerUserKeyModal, SeverUserModal, UserRole};
 use well_i_known_core::modal::util::id_validation::validate_id;
-use crate::config::server_config::WIKServerEnvironmentConfig;
+use crate::config::server_config::*;
 use crate::db::db_connection::DbConnection;
 use crate::db::db_executor::db_result_handler;
 use crate::dao;
@@ -37,6 +37,27 @@ pub async fn create_root_user(db_conn: &DbConnection, username: &str, password: 
         "create_root_user")?;
 
     Ok(())
+}
+
+pub async fn get_root_user(db_conn: &DbConnection, server_config: &WIKServerEnvironmentConfig) -> Result<UserKeyModal, ApiError> {
+    let root = db_result_handler(
+        dao::user::get_users_with_role(db_conn, &UserRole::Root).await,
+        "get_root_user")?;
+
+    if root.len() != 1 {
+        warn!("Invalid root user count. Expected 1, but got {}.", root.len());
+        return Err(ApiError::RecordNotFound);
+    }
+    let root = &root[0];
+
+    let root_private_key_path = server_config.get_root_certs_dir_path().join(ROOT_KEY_PEM_FILENAME);
+    match UserKeyModal::new(&root.username, &root_private_key_path) {
+        Ok(root) => return Ok(root),
+        Err(error) => {
+            warn!("Fail to create root user. Error: {}", error);
+            return Err(ApiError::ServerError);
+        },
+    }
 }
 
 /// Create a user with role 'app' or 'admin'.
@@ -205,7 +226,7 @@ pub async fn get_users_with_access_to(db_conn: &DbConnection, server_config: &WI
 
     // map root
     let root = server_config.root_user.as_ref().unwrap();
-    users.push(ServerUserKeyModal::new_from_key(&root.username, &root.public_key));
+    users.push(ServerUserKeyModal::new_from_key(&root.username, &root.key.public_key));
 
     // map app
     let app = ServerUserKeyModal::new(&app_name, &server_config.get_users_certs_path(app_name));
