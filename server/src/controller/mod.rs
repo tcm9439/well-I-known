@@ -1,3 +1,3 @@
 pub mod user;
-pub mod data;
+pub mod config_data;
 pub mod admin;

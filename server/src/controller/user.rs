@@ -1,6 +1,6 @@
 use crate::auth::jwt_claim::JwtClaims;
 use crate::error::ApiError;
-use crate::repository;
+use crate::repository::user::UserRepository;
 use crate::server_state::ServerState;
 use well_i_known_core::api::user::*;
 use well_i_known_core::modal::user::UserRole;
@@ -17,7 +17,7 @@ pub async fn alter_user_handler(
     Json(payload): Json<UpdateUserParam>
 ) -> Result<(), ApiError> {
     // check if user already exists
-    let exists = repository::user::check_user_exists(&server_state.db_conn, &payload.username).await?;
+    let exists = UserRepository::check_user_exists(&server_state.db_conn, &payload.username).await?;
 
     if exists {
         // Case: update user
@@ -41,7 +41,7 @@ pub async fn alter_user_handler(
             });
         }
 
-        repository::user::update_user(
+        UserRepository::update_user(
             &server_state.db_conn,
             &payload.username,
             &payload.password
@@ -85,7 +85,7 @@ pub async fn alter_user_handler(
             }
 
             let user_cert_dir = server_state.config.get_users_certs_dir_path();
-            repository::user::create_user(
+            UserRepository::create_user(
                 &server_state.db_conn,
                 &claims.sub,
                 &claims.get_role(),
@@ -107,7 +107,7 @@ pub async fn delete_user_handler(
     State(server_state): State<Arc<ServerState>>,
     Json(payload): Json<DeleteUserParam>
 ) -> Result<(), ApiError> {
-    repository::user::delete_user(
+    UserRepository::delete_user(
         &server_state.db_conn,
         &payload.username,
         &server_state.config.get_users_certs_path(&payload.username)
@@ -123,14 +123,14 @@ pub async fn validate_user_handler(
     Json(payload): Json<ValidateUserParam>
 ) -> Result<Json<ValidateUserResponse>, ApiError> {
     // check if user exists
-    let exists = repository::user::check_user_exists(&server_state.db_conn, &payload.username).await?;
+    let exists = UserRepository::check_user_exists(&server_state.db_conn, &payload.username).await?;
 
     if !exists {
         warn!("User {} does not exist.", &payload.username);
         return Err(ApiError::RecordNotFound);
     }
 
-    let user = repository::user::get_user(
+    let user = UserRepository::get_user(
         &server_state.db_conn,
         &payload.username,
         &server_state.config.get_users_certs_path(&payload.username)

@@ -19,7 +19,8 @@ pub enum ApiError {
     InvalidArgument { argument: String, message: String },    // Invalid argument provided
 }
 
-/// Convert the ApiError into a HTTP response
+/// Map the ApiError into a HTTP response
+/// The returned type of the server handler (controller).
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {

@@ -1,5 +1,5 @@
 use crate::auth::jwt_claim::JwtClaims;
-use crate::dao;
+use crate::repository::user::UserRepository;
 use crate::{error::ApiError, server_state::ServerState};
 
 use std::sync::Arc;
@@ -43,10 +43,14 @@ impl AuthBody {
     }
 }
 
-// axum extractor for decoding & verifying the JWT token
-// See https://docs.rs/axum/0.7.4/axum/extract/index.html for what is an extractor
+/// axum extractor for decoding & verifying the JWT token
+/// See https://docs.rs/axum/0.7.4/axum/extract/index.html for what is an extractor
+/// This extractor try to extract the JWT token from the Authorization header 
+/// and pass it to the API controllers.
+/// If failed, return an ApiError
 #[async_trait]
 impl<S> FromRequestParts<S> for JwtClaims
+// FromRequestParts => will not consume the request (can carry on to the other extractors)
 where
     Arc<ServerState>: FromRef<S>,
     S: Send + Sync,
@@ -71,6 +75,8 @@ where
 }
 
 /// Handler for the authorization user
+/// i.e. the API controller for login
+/// Returns the JWT token if the user is authorized
 #[instrument(skip(state))]
 pub async fn authorize_handler(
     State(state): State<Arc<ServerState>>,
@@ -83,24 +89,11 @@ pub async fn authorize_handler(
         return Err(ApiError::MissingCredentials);
     }
 
-    let validate_result = dao::user::auth_user(&state.db_conn, &payload.username, &payload.password).await;
-    
-    match validate_result {
-        Ok((false, _)) => {
-            warn!("Wrong credentials");
-            return Err(ApiError::WrongCredentials);
-        },
-        Err(e) => {
-            warn!("Failed to authenticate user: {:?}", e);
-            return Err(ApiError::ServerError);
-        },
-        _ => {}
-    }
-
+    let user_role = UserRepository::auth_user(&state.db_conn, &payload.username, &payload.password).await?;
     info!("User authorized");
+
     // Create the authorization token
-    let (_, role) = validate_result.unwrap();
-    let token = JwtClaims::new(&payload.username, &role).gen_token(&state.jwt_keys)?;
+    let token = JwtClaims::new(&payload.username, &user_role.to_string()).gen_token(&state.jwt_keys)?;
 
     // Send the authorized token
     Ok(Json(AuthBody::new(token)))

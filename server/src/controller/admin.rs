@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use crate::auth::jwt_claim::JwtClaims;
 use crate::server_state::ServerState;
-use crate::auth::role_validation::*;
+use crate::auth::role_validation::RoleValidationUtil;
 use crate::error::ApiError;
-use crate::repository::{user, access_right};
+use crate::repository::{user::UserRepository, access_right::AccessRightRepository};
 use well_i_known_core::api::admin::*;
 use well_i_known_core::modal::user::UserRole;
 
@@ -15,11 +15,11 @@ use tracing::*;
 /// Authorization for the requester calling the admin access right API.
 async fn basic_auth_for_admin_api(server_state: &Arc<ServerState>, claims: &JwtClaims, payload: &AdminAccessParam) -> Result<(), ApiError> {
     // check if user is admin
-    let authorized = is_admin(&claims.role);
-    throw_if_unauthorized(authorized, &claims.sub, "create admin access right")?;
+    let authorized = RoleValidationUtil::is_admin(&claims.role);
+    RoleValidationUtil::throw_if_unauthorized(authorized, &claims.sub, "create admin access right")?;
 
     // check if the target user is admin (& valid)
-    let is_admin = user::is_valid_user_of_role(
+    let is_admin = UserRepository::is_valid_user_of_role(
         &server_state.db_conn, 
         &payload.admin,
         &UserRole::Admin,
@@ -45,7 +45,7 @@ pub async fn create_admin_access_handler(
     basic_auth_for_admin_api(&server_state, &claims, &payload).await?;
 
     // check if access right exists
-    let exists = access_right::check_access_right_exists(
+    let exists = AccessRightRepository::check_access_right_exists(
         &server_state.db_conn, 
         &payload.admin,
         &payload.app, 
@@ -56,7 +56,7 @@ pub async fn create_admin_access_handler(
         return Err(ApiError::DuplicateRecord);
     } 
 
-    access_right::add_access_right(
+    AccessRightRepository::add_access_right(
         &server_state.db_conn, 
         &payload.admin,
         &payload.app, 
@@ -74,7 +74,7 @@ pub async fn delete_admin_access_handler(
     basic_auth_for_admin_api(&server_state, &claims, &payload).await?;
     
     // check if access right exists
-    let exists = access_right::check_access_right_exists(
+    let exists = AccessRightRepository::check_access_right_exists(
         &server_state.db_conn, 
         &payload.admin,
         &payload.app, 
@@ -85,7 +85,7 @@ pub async fn delete_admin_access_handler(
         return Err(ApiError::RecordNotFound);
     }
 
-    access_right::delete_access_right(
+    AccessRightRepository::delete_access_right(
         &server_state.db_conn, 
         &payload.admin,
         &payload.app,

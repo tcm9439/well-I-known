@@ -1,4 +1,4 @@
-use crate::db::db_connection::{self, DbConnection};
+use crate::db::db_connection::DbConnection;
 use std::path::{PathBuf, Path};
 use std::fs;
 
@@ -23,6 +23,5 @@ pub async fn create_test_db(test_case_name: &str) -> DbConnection{
     fs::copy(&test_base_path, &test_case_db_path).unwrap();
 
     // create the connection
-    let db_conn = db_connection::create_connection_pool(&test_case_db_path).await.unwrap();
-    DbConnection { pool: db_conn }
+    DbConnection::new(&test_case_db_path).await.unwrap()
 }
